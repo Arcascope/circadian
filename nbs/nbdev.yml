@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "circadian"
+  site-url: "https://khannay.github.io/circadian"
+  description: "Tools for the simulation and analysis of circadian rhythms"
+  repo-branch: main
+  repo-url: "https://github.com/khannay/circadian"
