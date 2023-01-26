@@ -31,14 +31,6 @@ min_python = cfg['min_python']
 lic = licenses.get(cfg['license'].lower(), (cfg['license'], None))
 dev_requirements = (cfg.get('dev_requirements') or '').split()
 
-fastclock_module = Extension('fastclock',
-                    sources = ['circadian/fastclock/rk4.c', 
-                               'circadian/fastclock/fastclock.c', 
-                               'circadian/fastclock/spmodel.c', 
-                               'circadian/fastclock/utils.c'],
-                    extra_compile_args = [''],
-                    language = "c")
-
 setuptools.setup(
     name = cfg['lib_name'],
     license = lic[0],
@@ -51,10 +43,6 @@ setuptools.setup(
     packages = setuptools.find_packages(),
     include_package_data = True,
     install_requires = requirements,
-    headers=['circadian/fastclock/rk4.h', 
-                               'circadian/fastclock/spmodel.h', 
-                               'circadian/fastclock/utils.h'],
-    ext_modules= [fastclock_module],
     extras_require={ 'dev': dev_requirements },
     dependency_links = cfg.get('dep_links','').split(),
     python_requires  = '>=' + cfg['min_python'],
