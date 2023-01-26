@@ -25,7 +25,7 @@ import numpy as np
 
 
 ts =  np.arange(0.0, 24*100, 0.1)
-light_values = np.array([ShiftWorkerThreeTwelves(t, Intensity=150.0) for t in ts])
+light_values = np.array([SlamShift(t, Intensity=150.0) for t in ts])
 model = Forger99Model()
 spm_model = SinglePopModel()
 tpm_model = TwoPopulationModel()

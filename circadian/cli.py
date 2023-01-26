@@ -3,14 +3,14 @@
 # %% auto 0
 __all__ = ['mytz', 'main_acto', 'main_esri']
 
-# %% ../nbs/08_cli.ipynb 2
+# %% ../nbs/08_cli.ipynb 3
 import torch
 from torch import jit
 from datetime import datetime
 import argparse
 from .plots import Actogram
 from .models import SinglePopModel
-from .readers import AppleWatch, AppleWatchReader
+from .readers import WearableData, read_standard_csv, read_standard_json
 from .utils import phase_ic_guess
 from .sleep import cluster_sleep_periods_scipy, sleep_midpoint
 from .utils import simple_norm_stepshr_sleep_classifier
@@ -21,7 +21,7 @@ from pytz import timezone
 mytz = timezone('EST')
 
 
-# %% ../nbs/08_cli.ipynb 3
+# %% ../nbs/08_cli.ipynb 4
 def main_acto():
     parser = argparse.ArgumentParser(description="""Make an actogram""")
 
@@ -131,12 +131,11 @@ def main_acto():
         wake_predicted = np.where(wake_predicted > 0.50, 1.0, 0.0)
         return wake_predicted
     
-    reader = AppleWatchReader()
     if args.json:
-        awObj = reader.read_standard_json(args.json)
+        awObj = read_standard_json(args.json)
 
     if args.csv:
-        awObj = reader.read_standard_csv(args.csv)
+        awObj = read_standard_csv(args.csv)
 
     if args.csv or args.json:
         if args.t1 or args.t2:
@@ -149,7 +148,9 @@ def main_acto():
 
         if args.sleepmodel:
             awObj.wake = generated_sleep(
-                ml_model_path=args.sleepmodel, steps=steps, hr=hr)
+                ml_model_path=args.sleepmodel, 
+                steps=steps, 
+                hr=hr)
 
     if args.raw:
         awObj.plot()
@@ -174,7 +175,7 @@ def main_acto():
         acto = Actogram(np.hstack(ts),
                         np.hstack(awObj.wake),
                         ax=ax,
-                        threshold=args.threshold,
+                        threshold=0.5,
                         smooth=False,
                         opacity=0.50,
                         color='green')
@@ -226,7 +227,7 @@ def main_acto():
     plt.show()
 
 
-# %% ../nbs/08_cli.ipynb 4
+# %% ../nbs/08_cli.ipynb 5
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -235,7 +236,7 @@ import sys
 import torch
 from torch import jit
 import circadian
-from .readers import Actiwatch, AppleWatch, ActiwatchReader, AppleWatchReader
+from .readers import WearableData, read_standard_csv, read_standard_json
 from .models import SinglePopModel
 from .utils import phase_ic_guess
 from .metrics import compactness, compactness_trajectory
@@ -245,7 +246,7 @@ from .plots import Actogram
 from pytz import timezone
 
 
-# %% ../nbs/08_cli.ipynb 5
+# %% ../nbs/08_cli.ipynb 6
 def main_esri():
     mytz = timezone('EST')
     parser = argparse.ArgumentParser(
@@ -337,12 +338,11 @@ def main_esri():
         return wake_predicted
 
 
-    reader = AppleWatchReader()
     if args.json:
-        awObj = reader.read_standard_json(args.json)
+        awObj = read_standard_json(args.json)
 
     if args.csv:
-        awObj = reader.read_standard_csv(args.csv)
+        awObj = read_standard_csv(args.csv)
 
     if args.csv or args.json:
         if args.t1 or args.t2:
