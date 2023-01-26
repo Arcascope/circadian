@@ -7,4 +7,6 @@ website:
       - 02_readers.ipynb
       - 03_plots.ipynb
       - 04_metrics.ipynb
+      - 05_sleep.ipynb
       - 07_utils.ipynb
+      - 08_cli.ipynb
