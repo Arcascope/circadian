@@ -3,23 +3,21 @@
 # %% auto 0
 __all__ = ['CircadianModel', 'Forger99Model', 'TwoPopulationModel', 'SinglePopModel']
 
-# %% ../nbs/00_models.ipynb 2
+# %% ../nbs/00_models.ipynb 3
 import scipy as sp
 from abc import ABC, abstractmethod
 import numpy as np
 from scipy.signal import find_peaks
+from .utils import phase_ic_guess
 
 from ctypes import c_void_p, c_double, c_int, cdll
 import scipy as sp
 import pylab as plt
 from pathlib import Path
 import sys
-# import fastclock 
+import numba 
 
-# # hack to not have to write an interface, just load the library 
-# fastclock = cdll.LoadLibrary(fastclock.__file__)
-
-# %% ../nbs/00_models.ipynb 4
+# %% ../nbs/00_models.ipynb 5
 class CircadianModel(ABC):
 
     def __init__(self, params: dict = None):
@@ -50,7 +48,32 @@ class CircadianModel(ABC):
             Return the state of the model assuming a constant light value
             for one time step and using rk4 to perform the step
         """
-        pass
+        k1 = self.derv(state, light=light_val)
+        k2 = self.derv(state + k1 * dt / 2.0, light=light_val)
+        k3 = self.derv(state + k2 * dt / 2.0, light=light_val)
+        k4 = self.derv(state + k3 * dt, light=light_val)
+        state = state + (dt / 6.0) * (k1 + 2.0*k2 + 2.0*k3 + k4)
+        return state
+    
+    
+    def integrate_model(self,
+                        ts: np.ndarray, # Array of time points, also determines step size of RK4 solver
+                        light_est: np.ndarray, # Array of light estimates, should be the same length as ts
+                        state: np.ndarray, # Initial state of the model
+                        ):
+        """
+            Integrate the two population model forward in 
+            time using the given light estimate vector using RK4
+        """
+        n = len(ts)
+        sol = np.zeros((state.shape[0],n))
+        sol[:,0] = state
+        for idx in range(1,n):
+            state = self.step_rk4(state = state, 
+                                        light_val=light_est[idx], 
+                                        dt = ts[idx]-ts[idx-1])
+            sol[:,idx] = state
+        return sol 
 
     @staticmethod
     def DLMOObs(t: float, 
@@ -112,7 +135,7 @@ class CircadianModel(ABC):
 
 
 
-# %% ../nbs/00_models.ipynb 6
+# %% ../nbs/00_models.ipynb 7
 class Forger99Model(CircadianModel):
     """ A simple python implementation of the two population human model from Hannay et al 2019"""
 
@@ -234,37 +257,6 @@ class Forger99Model(CircadianModel):
 
         return (dydt)
     
-    def step_rk4(self, state: np.ndarray, 
-                 light_val: float, 
-                 dt: float):
-        """
-            Return the state of the model assuming a constant light value
-            for one time step and using rk4 to perform the step
-        """
-        k1 = self.derv(state, light=light_val)
-        k2 = self.derv(state + k1 * dt / 2.0, light=light_val)
-        k3 = self.derv(state + k2 * dt / 2.0, light=light_val)
-        k4 = self.derv(state + k3 * dt, light=light_val)
-        state = state + (dt / 6.0) * (k1 + 2.0*k2 + 2.0*k3 + k4)
-        return state
-
-    def integrate_model(self,
-                        ts: np.ndarray,
-                        light_est: np.ndarray,
-                        state: np.ndarray):
-        """
-            Integrate the two population model forward in 
-            time using the given light estimate vector using RK4
-        """
-        n = len(ts)
-        sol = np.zeros((3,n))
-        sol[:,0] = state
-        for idx in range(1,n):
-            state = self.step_rk4(state = state, 
-                                        light_val=light_est[idx], 
-                                        dt = ts[idx]-ts[idx-1])
-            sol[:,idx] = state
-        return sol 
     
     def integrate_observer(self, 
                            ts: np.ndarray, 
@@ -288,15 +280,12 @@ class Forger99Model(CircadianModel):
         return np.sin(0.5*(state[2]-np.pi))
 
     def amplitude(state):
-        # Make this joint amplitude at some point 
         return np.sqrt(state[0]**2+state[1]**2)
 
     def phase(state):
         x= state[0] 
         y = state[1]*-1.0
         return np.angle(x + complex(0,1)*y)
-        return np.arctan(-1*state[1],state[0])
-        #return np.arctan2(-1*state[1],state[0])
         
     def default_initial_conditions(self):
         """
@@ -316,7 +305,7 @@ class Forger99Model(CircadianModel):
 
 
 
-# %% ../nbs/00_models.ipynb 8
+# %% ../nbs/00_models.ipynb 9
 class TwoPopulationModel(CircadianModel):
     """ A simple python implementation of the two population human model from Hannay et al 2019"""
 
@@ -544,7 +533,7 @@ class TwoPopulationModel(CircadianModel):
 
 
 
-# %% ../nbs/00_models.ipynb 10
+# %% ../nbs/00_models.ipynb 11
 class SinglePopModel(CircadianModel):
     """
         A simple python program to integrate the human circadian rhythms model 
@@ -730,8 +719,4 @@ class SinglePopModel(CircadianModel):
         Gives some default initial conditions for the model
         """
         return np.array([1.0,0.0,0.0])
-
-
-
-
 

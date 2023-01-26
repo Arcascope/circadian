@@ -144,10 +144,10 @@ def phase_coherence(series):
     return(ans)
 
 def phase_coherence_clock(series):
-    angles=sp.pi/12.0*series
+    angles=np.pi/12.0*series
     return(phase_coherence(angles))
 
-def angle_difference(c1, c2):
+def angle_difference(c1, c2) -> float:
     """Find the angle between two angles given in radians
     angle_difference(c1, c2)
     c1-c2
