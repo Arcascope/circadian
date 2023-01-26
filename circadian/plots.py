@@ -11,8 +11,7 @@ import numpy as np
 from pathlib import Path
 import sys
 from .utils import cut_phases_12
-#sys.path.append(str(Path(__file__).parent))
-
+# sys.path.append(str(Path(__file__).parent))
 
 
 # %% ../nbs/03_plots.ipynb 4
@@ -28,7 +27,7 @@ class Actogram:
                  opacity: float = 1.0,
                  color: str = 'black',
                  smooth=True,
-                 sigma=[2.0,2.0]
+                 sigma=[2.0, 2.0]
                  ):
         """
             Create an actogram of the given marker..... 
@@ -43,8 +42,10 @@ class Actogram:
         self.second_zeit = second_zeit if second_zeit is not None else light_vals
 
         if smooth:
-            self.light_vals = gaussian_filter1d(self.light_vals, sigma=sigma[0])
-            self.second_zeit = gaussian_filter1d(self.second_zeit, sigma=sigma[1])
+            self.light_vals = gaussian_filter1d(
+                self.light_vals, sigma=sigma[0])
+            self.second_zeit = gaussian_filter1d(
+                self.second_zeit, sigma=sigma[1])
 
         if threshold2 is None:
             threshold2 = threshold
@@ -87,8 +88,10 @@ class Actogram:
         self.ax.set_xlabel("ZT")
         self.ax.set_ylabel("Days")
 
-        self.addLightSchedule(self.light_vals, threshold, plt_option='left', color=self.darkColor)
-        self.addLightSchedule(self.second_zeit, threshold2, plt_option='right', color=self.darkColor)
+        self.addLightSchedule(self.light_vals, threshold,
+                              plt_option='left', color=self.darkColor)
+        self.addLightSchedule(self.second_zeit, threshold2,
+                              plt_option='right', color=self.darkColor)
         self.ax.invert_yaxis()
 
     def getRectangles(self, timeon, timeoff, colorIn='white'):
@@ -113,9 +116,9 @@ class Actogram:
         self.ax.add_patch(r[0])
         self.ax.add_patch(r[1])
 
-    def addLightSchedule(self, zeit: np.ndarray, 
-                         threshold: float, 
-                         plt_option: str = 'both', 
+    def addLightSchedule(self, zeit: np.ndarray,
+                         threshold: float,
+                         plt_option: str = 'both',
                          color='black'):
         """
             Add the light schedule as colored rectangles to the axes
@@ -288,54 +291,66 @@ def plot_torus(phase1: np.ndarray, phase2: np.ndarray, scale24=False, ax=None, *
     ax.scatter(phase1, phase2, *args, **kwargs)
 
 
-
-
 # %% ../nbs/03_plots.ipynb 7
 class Stroboscopic:
     """
     This class can be used to make a stroboscopic plot of the entrainment of an oscillator to a sudden shift in schedule
     """
 
-    def __init__(self, ax, tsdf):
+    def __init__(self, 
+                 ax: plt.Axes,
+                 ts: np.ndarray,
+                amplitude: np.ndarray,
+                phase: np.ndarray,
+                period: float = 24.0, # The time period between stroboscopic arrows
+                *args: tuple, #passed to the quiver plot
+                **kwargs: dict #passed to the quiver plot
+        ):
         """
         Pass in axes and a time series data frame for the model. Make sure to pass the pandas data frame starting with 
         the row you want to begin the stroboscopic plot
         """
-        self.tsdf = tsdf
+        self.ts = ts
+        self.R = amplitude
+        self.phase = phase
+        self.period = period
         self.ax = ax
 
-        self.makeStroboPlot()
+        self._make_strobo_plot(*args, **kwargs)
 
-    def makeStroboPlot(self):
+    def _make_strobo_plot(self, *args, **kwargs):
         """Add the paths to a quiver plot"""
-        start_amp = self.tsdf.R.iloc[0]
+        start_amp = self.R[0]
 
-        Xvals = np.array(self.tsdf.R / start_amp * sp.cos(self.tsdf.Phase))
-        Yvals = np.array(self.tsdf.R / start_amp * sp.sin(self.tsdf.Phase))
+        Xvals = np.array(self.R / start_amp * np.cos(self.phase))
+        Yvals = np.array(self.R / start_amp * np.sin(self.phase))
 
-        circle_angles = np.linspace(0, 2 * sp.pi, 1000)
-        circle_x = list([sp.cos(x) for x in circle_angles])
-        circle_y = list([sp.sin(x) for x in circle_angles])
+        circle_angles = np.linspace(0, 2 * np.pi, 1000)
+        circle_x = list([np.cos(x) for x in circle_angles])
+        circle_y = list([np.sin(x) for x in circle_angles])
 
         self.ax.plot(circle_x, circle_y, lw=2.0, color='k')
         # Sample down to every 24 hours
-        Xvals = Xvals[::240]
-        Yvals = Yvals[::240]
-        upper_bound = min(10, len(Xvals))
-        for i in range(1, upper_bound + 10):
+        Xvals = np.interp(np.arange(self.ts[0], self.ts[-1], self.period), self.ts, Xvals)
+        Yvals = np.interp(np.arange(self.ts[0], self.ts[-1], self.period), self.ts, Yvals)
+        upper_bound = len(Xvals)
+        for i in range(1, upper_bound):
             self.ax.quiver(Xvals[i - 1], Yvals[i - 1], Xvals[i] - Xvals[i - 1], Yvals[i] - Yvals[i - 1],
-                           scale_units='xy', angles='xy', scale=1, color='blue')
+                           scale_units='xy', angles='xy', scale=1, *args, **kwargs)
         self.ax.set_xlim([-1.1, 1.1])
         self.ax.set_ylim([-1.1, 1.1])
         self.ax.scatter([0.0], [0.0], color='k')
         self.ax.set_axis_off()
 
-    def addStroboPlot(self, tsdf2, col='darkgreen'):
+    def add_strobo_plot(self, 
+                        amplitude: np.ndarray,
+                        phase: np.ndarray,
+                        col='darkgreen'):
         """Add a strobo plot to the axes for comparison"""
-        start_amp = tsdf2.R.iloc[0]
+        start_amp = amplitude[0]
 
-        Xvals = np.array(tsdf2.R / start_amp * sp.cos(tsdf2.Phase))
-        Yvals = np.array(tsdf2.R / start_amp * sp.sin(tsdf2.Phase))
+        Xvals = np.array(amplitude / start_amp * np.cos(phase))
+        Yvals = np.array(amplitude / start_amp * np.sin(phase))
 
         # Sample down to every 24 hours
         Xvals = Xvals[::240]
@@ -346,3 +361,58 @@ class Stroboscopic:
             self.ax.quiver(Xvals[i - 1], Yvals[i - 1], Xvals[i] - Xvals[i - 1], Yvals[i] - Yvals[i - 1],
                            scale_units='xy', angles='xy', scale=1, color=col)
 
+
+# %% ../nbs/03_plots.ipynb 10
+def plot_mae(dlmo_actual: np.ndarray, 
+             dlmo_pred: np.ndarray, 
+             norm_to: float = None, 
+             ax=None,  *args, **kwargs):
+
+    dlmo_actual = np.fmod(dlmo_actual, 24.0)
+    dlmo_pred = np.fmod(dlmo_pred, 24.0)
+
+    # Make the plot range from from -12 to 12
+    dlmo_pred = np.array([cut_phases_12(d) for d in list(dlmo_pred)])
+    dlmo_actual = np.array([cut_phases_12(d) for d in list(dlmo_actual)])
+
+    if norm_to is not None:
+        dlmo_actual = dlmo_actual - np.mean(dlmo_actual)+norm_to
+
+    if ax is None:
+        plt.figure()
+        ax = plt.gca()
+
+    errors = dlmo_pred-dlmo_actual
+    print(f"The MAE is: {np.mean(abs(errors))}")
+    print(f"Within one hour {np.sum(abs(errors)<=1.0)}/{len(dlmo_pred)}")
+
+    print(errors)
+
+    ax.scatter(dlmo_actual, dlmo_pred, *args, **kwargs)
+    ax.plot(np.arange(-12, 12, 1), np.arange(-12, 12, 1),
+            ls='--', color='gray', lw=2.0)
+    ax.plot(np.arange(-12, 12, 1), np.arange(-12, 12, 1)+1,
+            ls='--', color='blue', lw=1.0)
+    ax.plot(np.arange(-12, 12, 1), np.arange(-12, 12, 1)-1,
+            ls='--', color='blue', lw=1.0)
+
+    ax.set_ylabel("Model Prediction (hrs)")
+    ax.set_xlabel("Experimental DLMO (hrs)")
+
+
+
+# %% ../nbs/03_plots.ipynb 11
+def plot_torus(phase1: np.ndarray, phase2: np.ndarray, scale24=False, ax=None, *args, **kwargs):
+
+    if ax is None:
+        plt.figure()
+        ax = plt.gca()
+
+    if scale24:
+        phase1 = np.fmod(phase1, 24.0) * np.pi/12.0
+        phase2 = np.fmod(phase2,  24.0) * np.pi/24.0
+
+    phase1 = np.arctan2(np.sin(phase1), np.cos(phase1))
+    phase2 = np.arctan2(np.sin(phase2), np.cos(phase2))
+
+    ax.scatter(phase1, phase2, *args, **kwargs)

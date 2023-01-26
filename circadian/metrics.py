@@ -7,9 +7,11 @@ __all__ = ['compactness', 'compactness_trajectory']
 import numpy as np
 from .models import SinglePopModel
 from .utils import phase_ic_guess
+from .readers import AppleWatch
 
 # %% ../nbs/04_metrics.ipynb 4
-def compactness(awObj, gamma: float = 0.0,
+def compactness(awObj: AppleWatch, 
+                gamma: float = 0.0,
                 multiplier: float = 1.0,
                 num_days: float = 4.5):
 

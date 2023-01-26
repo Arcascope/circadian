@@ -7,28 +7,18 @@ __all__ = ['simple_norm_stepshr_sleep_classifier', 'phase_ic_guess', 'abs_hour_d
            'NpEncoder', 'times_to_angle', 'timezone_mapper', 'split_missing_data', 'split_drop_data']
 
 # %% ../nbs/07_utils.ipynb 3
-from builtins import map
-from builtins import object
-from builtins import range
-from builtins import zip
-from math import fmod
-
 import numpy as np
 import pandas as pd
-import pylab as plt
 import scipy as sp
 from numba import jit
 from scipy import interpolate
 import torch 
-import json 
-
-import numpy as np
+import json
 import pytz
 import datetime
 import copy
-from builtins import range
-import numpy as np
 import scipy as sp
+from scipy.integrate import solve_ivp
 from math import *
 import pylab as plt
 
@@ -207,7 +197,7 @@ def circular_scatter(ax, angles, clock_times=False, radius=1.0, color='blue'):
     
 
 
-# %% ../nbs/07_utils.ipynb 9
+# %% ../nbs/07_utils.ipynb 8
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
