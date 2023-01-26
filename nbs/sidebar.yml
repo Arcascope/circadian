@@ -1,0 +1,10 @@
+website:
+  sidebar:
+    contents:
+      - index.ipynb
+      - 00_models.ipynb
+      - 01_lights.ipynb
+      - 02_readers.ipynb
+      - 03_plots.ipynb
+      - 04_metrics.ipynb
+      - 07_utils.ipynb
