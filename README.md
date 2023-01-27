@@ -11,7 +11,8 @@ pip install circadian
 
 ## How to use
 
-Fill me in please! Don’t forget code examples:
+The below shows how to simulate a slam shift schedule for three models
+and make an actogram plot
 
 ``` python
 # Example run for forger 99 vdp model

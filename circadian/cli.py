@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['mytz', 'main_acto', 'main_esri']
 
-# %% ../nbs/08_cli.ipynb 3
+# %% ../nbs/08_cli.ipynb 4
 import torch
 from torch import jit
 from datetime import datetime
@@ -21,7 +21,7 @@ from pytz import timezone
 mytz = timezone('EST')
 
 
-# %% ../nbs/08_cli.ipynb 4
+# %% ../nbs/08_cli.ipynb 5
 def main_acto():
     parser = argparse.ArgumentParser(description="""Make an actogram""")
 
@@ -227,7 +227,7 @@ def main_acto():
     plt.show()
 
 
-# %% ../nbs/08_cli.ipynb 5
+# %% ../nbs/08_cli.ipynb 6
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
@@ -246,7 +246,7 @@ from .plots import Actogram
 from pytz import timezone
 
 
-# %% ../nbs/08_cli.ipynb 6
+# %% ../nbs/08_cli.ipynb 7
 def main_esri():
     mytz = timezone('EST')
     parser = argparse.ArgumentParser(
