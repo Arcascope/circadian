@@ -239,7 +239,7 @@ import circadian
 from .readers import WearableData, read_standard_csv, read_standard_json
 from .models import SinglePopModel
 from .utils import phase_ic_guess
-from .metrics import compactness, compactness_trajectory
+from .metrics import *
 from .utils import simple_norm_stepshr_sleep_classifier
 import pandas as pd
 from .plots import Actogram
@@ -365,7 +365,7 @@ def main_esri():
     smooth_length = 100
     num_days_compactness = 4.5
 
-    ts_compact, timestamps, compactness = compactness_trajectory(
+    ts_compact, timestamps, compactness = esri_trajectory(
         awObj, gamma=0.0, multiplier=1.0, num_days=num_days_compactness)
     compactness_smooth = moving_average(compactness, smooth_length)
     plt.figure()
@@ -383,7 +383,7 @@ def main_esri():
 
 
     print(f"Writing results to {args.outfile}")
-    df = pd.DataFrame({'timestamp': timestamps, 'compactness': compactness})
+    df = pd.DataFrame({'timestamp': timestamps, 'esri': compactness})
     df.to_csv(args.outfile, index=False)
 
     if not args.noplot:

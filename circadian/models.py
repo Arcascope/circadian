@@ -230,13 +230,16 @@ class Forger99Model(CircadianModel):
 
         return (current_params)
 
-    def alpha0(self, light: float):
+    def alpha0(self, 
+               light: float # the light value in lux
+               ):
         """A helper function for modeling the light input processing"""
         return (self.alpha_0 * pow((light / self.I0), self.p))
 
     def derv(self, 
-             y: np.ndarray, 
-             light: float):
+             y: np.ndarray, # dynamical state 
+             light: float # light value in lux
+             ) -> np.ndarray:
         """
         This defines the ode system for the forger 99 model
         returns dydt numpy array.
@@ -259,10 +262,11 @@ class Forger99Model(CircadianModel):
     
     
     def integrate_observer(self, 
-                           ts: np.ndarray, 
-                           light_est: np.ndarray, 
-                           u0: np.ndarray = None, 
-                           observer: float = -7.0):
+                           ts: np.ndarray, # vector of times should correspond to light_est, in hours. Also sets the time step for the integration. 
+                           light_est: np.ndarray, # light estimate vector in lux
+                           u0: np.ndarray = None, # initial conditions
+                           observer: float = -7.0 # offset in hours from CBTmin
+                           ) -> np.ndarray:
         """
             Integrate the two population model forward in time using the given light estimate vector
             Returns the times that the observer crosses zero, defaults to DLMO
@@ -272,40 +276,37 @@ class Forger99Model(CircadianModel):
         #zero_crossings = np.where(np.diff(np.sign(observer(0.0, sol))))[0]
         return ts[cbt_mins] + observer
         
-    def DLMOObs(t, state):
-        phi = Forger99Model.phase(state)
-        return np.sin(0.5*(phi-5*np.pi/12.0))
+    def DLMOObs(t, state) -> float:
+        pass
 
-    def CBTObs(t, state):
-        return np.sin(0.5*(state[2]-np.pi))
+    def CBTObs(t, state) -> float:
+        pass
 
-    def amplitude(state):
+    def amplitude(state) -> float:
         return np.sqrt(state[0]**2+state[1]**2)
 
-    def phase(state):
+    def phase(state) -> float:
         x= state[0] 
         y = state[1]*-1.0
         return np.angle(x + complex(0,1)*y)
         
-    def default_initial_conditions(self):
+    def default_initial_conditions(self) -> np.ndarray:
         """
-        Gives some default initial conditions for the model
+        x= –0.3 and xc= –1.13 are the default initial conditions for the model
+        should be the value near the habitual bed time of the individual. 
         """
-        return np.array([0.50,0.50,0.0])
+        return np.array([-0.3,-1.13,0.0])
         
     
     @staticmethod
-    def guessICDataForger99(time_zero, length=150):
+    def guessICDataForger99(time_zero, lengh):
         """Guess the Initial conditions for the model using the persons light schedule
         Need to add a check to see if the system is entrained at all
         """
         pass
     
 
-
-
-
-# %% ../nbs/00_models.ipynb 9
+# %% ../nbs/00_models.ipynb 15
 class TwoPopulationModel(CircadianModel):
     """ A simple python implementation of the two population human model from Hannay et al 2019"""
 
@@ -457,38 +458,6 @@ class TwoPopulationModel(CircadianModel):
         dydt[4] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
         return (dydt)
     
-    def step_rk4(self, state: np.ndarray, 
-                 light_val: float, 
-                 dt: float):
-        """
-            Return the state of the model assuming a constant light value
-            for one time step and using rk4 to perform the step
-        """
-        k1 = self.derv(state, light=light_val)
-        k2 = self.derv(state + k1 * dt / 2.0, light=light_val)
-        k3 = self.derv(state + k2 * dt / 2.0, light=light_val)
-        k4 = self.derv(state + k3 * dt, light=light_val)
-        state = state + (dt / 6.0) * (k1 + 2.0*k2 + 2.0*k3 + k4)
-        return state
-
-    def integrate_model(self,
-                        ts: np.ndarray,
-                        light_est: np.ndarray,
-                        state: np.ndarray):
-        """
-            Integrate the two population model forward in 
-            time using the given light estimate vector using RK4
-        """
-        n = len(ts)
-        sol = np.zeros((5,n))
-        sol[:,0] = state
-        for idx in range(1,n):
-            state = self.step_rk4(state = state, 
-                                        light_val=light_est[idx], 
-                                        dt = ts[idx]-ts[idx-1])
-            sol[:,idx] = state
-        return sol 
-    
     def integrate_observer(self, ts: np.ndarray, 
                            light_est: np.ndarray, 
                            u0: np.ndarray = None, 
@@ -533,7 +502,7 @@ class TwoPopulationModel(CircadianModel):
 
 
 
-# %% ../nbs/00_models.ipynb 11
+# %% ../nbs/00_models.ipynb 17
 class SinglePopModel(CircadianModel):
     """
         A simple python program to integrate the human circadian rhythms model 
@@ -610,20 +579,6 @@ class SinglePopModel(CircadianModel):
         return (self.alpha_0 * pow(light, self.p) /
                 (pow(light, self.p) + self.I0))
     
-    def step_rk4(self, 
-                 state: np.ndarray, 
-                 light_val: float, 
-                 dt: float):
-        """
-            Return the state of the model assuming a constant light value
-            for one time step and using rk4 to perform the step
-        """
-        k1 = self.derv(state, light=light_val)
-        k2 = self.derv(state + k1 * dt / 2.0, light=light_val)
-        k3 = self.derv(state + k2 * dt / 2.0, light=light_val)
-        k4 = self.derv(state + k3 * dt, light=light_val)
-        state = state + (dt / 6.0) * (k1 + 2.0*k2 + 2.0*k3 + k4)
-        return state
     
     def derv(self, 
              y: np.ndarray, 
@@ -652,25 +607,6 @@ class SinglePopModel(CircadianModel):
         dydt[2] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
 
         return (dydt)
-
-
-    def integrate_model(self,
-                        ts: np.ndarray,
-                        light_est: np.ndarray,
-                        state: np.ndarray):
-        """
-            Integrate the two population model forward in 
-            time using the given light estimate vector using RK4
-        """
-        n = len(ts)
-        sol = np.zeros((3,n))
-        sol[:,0] = state
-        for idx in range(1,n):
-            state = self.step_rk4(state = state, 
-                                        light_val=light_est[idx], 
-                                        dt = ts[idx]-ts[idx-1])
-            sol[:,idx] = state
-        return sol 
 
     # def integrate_model(self,
     #                     ts: np.ndarray,
