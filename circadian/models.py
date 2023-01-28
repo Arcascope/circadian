@@ -296,6 +296,12 @@ class Forger99Model(CircadianModel):
         should be the value near the habitual bed time of the individual. 
         """
         return np.array([-0.3,-1.13,0.0])
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+    
+    def __str__(self) -> str:
+        return "Forger99Model"
         
     
     @staticmethod
@@ -640,7 +646,7 @@ class SinglePopModel(CircadianModel):
 
     def DLMOObs(t, state):
         return np.sin(0.5*(state[1]-5*np.pi/12.0))
-
+    
     def CBTObs(t, state):
         return np.sin(0.5*(state[1]-np.pi))
 
