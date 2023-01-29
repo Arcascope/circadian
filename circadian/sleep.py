@@ -32,21 +32,23 @@ class TwoProcessModel:
                  timetotal: np.ndarray,
                  R: np.ndarray, 
                  Psi: np.ndarray, 
-                 Steps: np.ndarray):
+                 steps: np.ndarray):
 
-        self.StepsFunc = lambda t: np.interp(t, timetotal, Steps)
+        self.StepsFunc = lambda t: np.interp(t, timetotal, steps)
         self.PhaseFunc = lambda t:  np.interp(t, timetotal, Psi)
         self.AmplitudeFunc =  lambda t: np.interp(t, timetotal, R)
-        self.Steps = Steps
+        self.steps = steps
         self.timetotal = timetotal
         self.steps_wake_threshold = 10.0
         self.awake = True
 
-    def check_wake_status(self, 
-                          awake: bool, 
-                          h: float, 
-                          c: float):
+    @staticmethod
+    def check_wake_status(awake: bool, # current wake status
+                          h: float,  # homeostat value
+                          psi: float #circadian phase
+                          ) -> bool:
 
+        c = np.cos(psi)
         H_minus = 0.17
         H_plus = 0.6
         homeostat_a = 0.10
@@ -58,28 +60,31 @@ class TwoProcessModel:
 
         if above_threshold:
             return False
+        elif below_threshold:
+            return True
         else:
-            if below_threshold:
-                return True
-            else:
-                return awake
+            return awake
 
     def dhomeostat(self, 
-                   t: float , 
-                   u: float ):
+                   t: float, # time in hours
+                   u: float # homeostat value
+                   ) -> float:
 
         h = u[0]
-        mu_s, tau_1, tau_s = (1.0, 18.2, 4.2)
-        self.awake = self.check_wake_status(
-            self.awake, h, 1.0*np.cos(self.PhaseFunc(t)))
-        steps_wake = self.StepsFunc(t) > self.steps_wake_threshold or self.awake
-
-        dh = np.zeros(1)
-        if steps_wake:
-            dh[0] = (mu_s - h) / tau_1
-        else:
-            dh[0] = -h / tau_s
-        return dh
+        # Two Process Params
+        tau_s = 4.2  # hours
+        tau_w = 18.2  # hours
+        mu_s = 1
+        
+        
+        step_awake = (self.StepsFunc(t) > self.steps_wake_threshold) or self.awake
+        dH = (mu_s - h) / tau_w if step_awake else -h / tau_s
+        self.awake = TwoProcessModel.check_wake_status(
+            self.awake, 
+            h, 
+            self.PhaseFunc(t)
+            )
+        return np.array([dH]) 
 
     def __call__(self, 
                  initial_value: float = 0.50 #  initial value for the homeostat
@@ -88,10 +93,10 @@ class TwoProcessModel:
         sol = solve_ivp(self.dhomeostat,
                         (self.timetotal[0], self.timetotal[-1]), 
                         [initial_value],
-                        t_eval = self.timetotal)
+                        t_eval = self.timetotal, method='RK45')
         return(sol.y[0,:])
 
-# %% ../nbs/05_sleep.ipynb 5
+# %% ../nbs/05_sleep.ipynb 6
 def sleep_midpoint(timetotal: np.ndarray, 
                    Wake: np.ndarray, 
                    durations=True):
@@ -139,7 +144,7 @@ def sleep_midpoint(timetotal: np.ndarray,
 
 
 
-# %% ../nbs/05_sleep.ipynb 6
+# %% ../nbs/05_sleep.ipynb 7
 def cluster_sleep_periods_scipy(wake_data: np.ndarray, 
                                 epsilon: float,
                                 makeplot: bool = False,

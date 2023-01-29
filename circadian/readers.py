@@ -140,10 +140,11 @@ class WearableData:
         # Check that we have the required columns
         assert "date_time" in self._dataframe.columns
         assert "time_total" in self._dataframe.columns
-
+        
+    def _copy_with_metadata(self, df: pd.DataFrame) -> "WearableData":
+        return WearableData(df, self.phase_measure, self.phase_measure_times, self.subject_id, self.data_id)
 
     def build_sleep_chunks(self, chunk_jump_hrs: float = 12.0) -> List[np.ndarray]:
-
         time_total = self.time_total
         steps = self.steps
         heartrate = self.heartrate
@@ -165,24 +166,25 @@ class WearableData:
                     idx2: int = None # second idx should be greater than idx1, defaults to the last value
                     ) -> 'WearableData':
         df = self._dataframe.loc[idx1:idx2, :]
-        return WearableData(df, 
-                            self.subject_id, 
-                            self.data_id, 
-                            self.phase_measure,
-                            self.phase_measure_times)
+        return self._copy_with_metadata(df)
 
-    def trim_by_hour(self, hour_start: float, hour_end: float) -> 'WearableData':
+    def trim_by_hour(self, 
+                     hour_start: float, # First hour to keep
+                     hour_end: float, # second hour should be greater than hour_start
+                     inplace: bool = False, # if true, the dataframe is modified in place, otherwise a copy is returned
+                     ) -> 'WearableData':
         # Trim the __dateframe to be within the interval [t1,t2]
-        df = self._dataframe[self._dataframe.time_total.between(hour_start, hour_end, inclusive=True), :]
-        return WearableData(df, 
-                            self.subject_id, 
-                            self.data_id, 
-                            self.phase_measure, 
-                            self.phase_measure_times)
-
-    def scaled_light_estimate(self, multiplier: float = 1.0) -> np.ndarray:
-        return multiplier*self.light_estimate
-
+        df = self._dataframe.loc[(self._dataframe.time_total > hour_start) & (self._dataframe.time_total < hour_end)]
+        if inplace:
+            self._dataframe = df
+            return 
+        return self._copy_with_metadata(df)
+    
+    def trim_by_timestamp(self, timestamp_start: float, timestamp_end: float) -> 'WearableData':
+        # Trim the __dateframe to be within the interval [t1,t2]
+        df = self._dataframe.loc[(self._dataframe.date_time > timestamp_start) & (self._dataframe.date_time < timestamp_end)]
+        return self._copy_with_metadata(df)
+    
     def to_json(self, filename: str = None):
         filename = filename if filename is not None else 'wearable_' + self.subject_id + '.json'
         self._dataframe.to_json(filename)
@@ -213,23 +215,36 @@ def steps_hr_loglinear(self: WearableData
 def plot_heartrate(self: WearableData, 
                    t1=None, 
                    t2=None, 
+                   ax: plt.Axes = None,
+                   show_plot: bool = True,
+                   color: str = 'red', 
+                   use_dates: bool = True,
                    *args, 
-                   **kwargs):
+                   **kwargs
+                   ) -> plt.Axes:
+        t1 = t1 if t1 is not None else self.time_total[0]
+        t2 = t2 if t2 is not None else self.time_total[-1]
+        wDataTrimmed = self.trim_by_hour(t1, t2)
 
-        time_start = t1 if t1 is not None else self.time_total[0]
-        time_end = t2 if t2 is not None else self.time_total[-1]
-
-        hr = deepcopy(self.heartrate)
+        hr = deepcopy(wDataTrimmed.heartrate)
         hr[hr == 0] = np.nan
-        fig = plt.figure()
-        ax = plt.gca()
-
-        ax.plot(self.time_total / 24.0, hr, color='red', *args, **kwargs)
+        if ax is None:
+            fig = plt.figure()
+            ax = plt.gca()
+        
+        if use_dates:
+            x = pd.to_datetime(wDataTrimmed.date_time, unit='s')
+        else:
+            x = wDataTrimmed.time_total / 24.0 
+        ax.plot(x, hr, color=color, *args, **kwargs)
         ax.set_xlabel('Days')
         ax.set_ylabel('BPM')
         ax.set_title('Heart Rate Data')
-        ax.set_ylim((0, 220))
-        plt.show()
+        
+        if show_plot:
+            plt.show()
+        return ax
+      
 
 # %% ../nbs/02_readers.ipynb 11
 @patch
@@ -420,7 +435,13 @@ def read_standard_json( filepath: str, # path to json file
         
 
 
-# %% ../nbs/02_readers.ipynb 20
+# %% ../nbs/02_readers.ipynb 15
+@patch 
+def fill_nan_heartrate(self: WearableData, with_value: float = 0.0):
+    """Fill in any nan values in the heartrate data using the specified method"""
+    self.heartrate = pd.Series(self.heartrate).fillna(with_value).to_numpy()
+
+# %% ../nbs/02_readers.ipynb 21
 @patch 
 def plot_light_activity(self: WearableData, 
                         show=True, 
@@ -464,63 +485,59 @@ def plot_light_activity(self: WearableData,
             return ax
 
 
-# %% ../nbs/02_readers.ipynb 22
-def read_actiwatch(filepath: str,
-                        MIN_LIGHT_THRESHOLD=5000,
-                        round_data=True,
-                        bin_minutes=6,
-                        dt_format: str = "%m/%d/%Y %I:%M:%S %p"
+# %% ../nbs/02_readers.ipynb 23
+def read_actiwatch(filepath: str, # path to actiwatch csv file
+                        MIN_LIGHT_THRESHOLD=5000, # used to trim off empty data at the beginning and end of the file, must reach this amount of light to be included. Turn this off can setting this to 0 or negative
+                        round_data=True, # round the data to the nearest bin_minutes
+                        bin_minutes=6, # bin the data to this resolution in minutes, only used if round_data is true
+                        dt_format: str = None, # format of the date time string, if None, will be inferred
+                        data_id: str = "Actiwatch", # name of the data source
+                        subject_id: str = "unknown-subject", #subject id to be used
                         ) -> WearableData:
-    """
-        Takes in a csv with columns 
-            Date : str 
-            Time : str 
-            White Light: float 
-            Sleep/Wake: float 
-            Activity: float
-        returns a WearableData object
-    """
-    df = pd.read_csv(filepath)
-    df['DateTime'] = df['Date']+" "+df['Time']
-    df['DateTime'] = pd.to_datetime(
-        df.DateTime, format=dt_format)
+    
+    df = pd.read_csv(filepath, names=['Date', 'Time', 'Activity', 'White Light', 'Sleep/Wake'], header=0) 
+    df['date_time'] = df['Date']+" "+df['Time']
+    if dt_format is None:
+        df['date_time'] = pd.to_datetime(df.date_time, infer_datetime_format=True)
+    else:
+        df['date_time'] = pd.to_datetime(df.date_time, format=dt_format)
 
     df['UnixTime'] = (
-        df['DateTime'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
-    df['Lux'] = df['White Light']
-    df.rename(columns={'Sleep/Wake': 'Wake'}, inplace=True)
+        df['date_time'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
+    
+    df.rename(columns={'White Light': 'light_estimate'}, inplace=True)
+    df.rename(columns={'Sleep/Wake': 'wake'}, inplace=True)
+    df.rename(columns={'Activity': 'activity'}, inplace=True)
 
-    df['Lux'].fillna(0, inplace=True)
-    df['LightSum'] = np.cumsum(df.Lux.values)
+    df['light_estimate'].fillna(0, inplace=True)
+    df['LightSum'] = np.cumsum(df.light_estimate.values)
     df['LightSumReverse'] = np.sum(
-        df.Lux.values) - np.cumsum(df.Lux.values) + 1.0
+        df.light_estimate.values) - np.cumsum(df.light_estimate.values) + 1.0
 
     df = df[(df.LightSum > MIN_LIGHT_THRESHOLD) & (
         df.LightSumReverse > MIN_LIGHT_THRESHOLD)]
 
-    time_start = self.utc_to_hrs(df.DateTime.iloc[0])
+    time_start = WearableData.utc_to_hrs(df.date_time.iloc[0])
     df2 = df[['UnixTime']].copy(deep=True)
     base_unix_time = df2['UnixTime'].iloc[0]
-    df['TimeTotal'] = time_start + \
+    df['time_total'] = time_start + \
         (df2.loc[:, ['UnixTime']]-base_unix_time)/3600.0
-
-    df = df[["DateTime", "TimeTotal", "UnixTime", "Activity", "Lux", "Wake"]]
+        
+    
+    df = df[["date_time", "time_total", "activity", "light_estimate", "wake"]]
     if round_data:
-        df.set_index('DateTime', inplace=True)
-        df = df.resample(str(int(bin_minutes))+'Min').agg({'TimeTotal': 'min',
-                                                            'UnixTime': 'min',
-                                                            'Activity': 'sum',
-                                                            'Lux': 'median',
-                                                            'Wake': 'max'})
+        df.set_index('date_time', inplace=True)
+        df = df.resample(str(int(bin_minutes))+'Min').agg({'time_total': 'min',
+                                                            'activity': 'sum',
+                                                            'light_estimate': 'median',
+                                                            'wake': 'max'})
         df.reset_index(inplace=True)
-
-    # # Not sure why hchs needs this
-    # df['TimeTotal'].interpolate(inplace=True)
-    #df.fillna(0, inplace=True)
+    df['time_total'].interpolate(inplace=True)
+    df.activity.fillna(0.0, inplace=True) 
+    df.light_estimate.fillna(0.0, inplace=True)
     return WearableData(
-        date_time=df.DateTime.values.to_numpy(),
-        time_total=df.TimeTotal.values.to_numpy(),
-        light_estimate=df.Lux.values.to_numpy(),
-        activity=df.Activity.values.to_numpy(),
+        _dataframe = df,
+        data_id=data_id,
+        subject_id=subject_id
     )
 

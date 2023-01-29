@@ -14,26 +14,23 @@ from .utils import cut_phases_12
 # sys.path.append(str(Path(__file__).parent))
 
 
-# %% ../nbs/03_plots.ipynb 4
+# %% ../nbs/03_plots.ipynb 5
 class Actogram:
 
     def __init__(self,
-                 time_total: np.ndarray,
-                 light_vals: np.ndarray,
-                 second_zeit: np.ndarray = None,
-                 ax=None,
-                 threshold=10.0,
-                 threshold2=None,
-                 opacity: float = 1.0,
-                 color: str = 'black',
-                 smooth=True,
-                 sigma=[2.0, 2.0]
+                 time_total: np.ndarray, # time in hours
+                 light_vals: np.ndarray, # light values or proxy should be the same length as time_total
+                 second_zeit: np.ndarray = None, # optional second zeitgeber to show on the right side
+                 ax=None, # Axis to plot on, if None a new figure is created
+                 threshold=10.0, # threshold for light on/off 
+                 threshold2=None, # threshold for light on/off for second zeitgeber
+                 opacity: float = 1.0, # opacity of the light on/off rectangles
+                 color: str = 'black', # color of the light on/off rectangles, for the below threshold values
+                 smooth=True, # whether to apply a gaussian filter to the light values to smooth it, useful for wearable data
+                 sigma=[2.0, 2.0], # sigma for the gaussian filter
+                 *args, # additional plot arguments
+                 **kwargs # additional plot keyword arguments
                  ):
-        """
-            Create an actogram of the given marker..... 
-
-            (self, time_total: np.ndarray, light_vals: np.ndarray, ax=None, threshold=10.0) 
-        """
 
         self.time_total = time_total
         self.light_vals = light_vals
@@ -47,16 +44,8 @@ class Actogram:
             self.second_zeit = gaussian_filter1d(
                 self.second_zeit, sigma=sigma[1])
 
-        if threshold2 is None:
-            threshold2 = threshold
-
-        if ax is not None:
-            self.ax = ax
-        else:
-            #plt.figure(figsize=(18, 12))
-            plt.figure()
-            ax = plt.gca()
-            self.ax = ax
+        threshold2 = threshold if threshold2 is None else threshold2
+        self.ax = ax if ax is not None else plt.gca()
 
         # Set graphical parameters
         label_scale = int(np.floor(self.num_days/30))
@@ -83,8 +72,12 @@ class Actogram:
         #self.ax.yaxis.grid(False, linewidth=1.0, color='k')
         # self.ax.xaxis.grid(False)
 
-        self.ax.plot(24.0*np.ones(100), np.linspace(0, self.num_days,
-                     100), ls='--', lw=2.0, color='black', zorder=9)
+        self.ax.plot(24.0*np.ones(100), 
+                     np.linspace(0, self.num_days,100), 
+                     ls='--', 
+                     lw=2.0, 
+                     color='black', 
+                     zorder=9)
         self.ax.set_xlabel("ZT")
         self.ax.set_ylabel("Days")
 
@@ -120,11 +113,6 @@ class Actogram:
                          threshold: float,
                          plt_option: str = 'both',
                          color='black'):
-        """
-            Add the light schedule as colored rectangles to the axes
-
-        """
-
         lightdata = zeit
         timedata = self.time_total
         lightsOn = False
@@ -291,7 +279,7 @@ def plot_torus(phase1: np.ndarray, phase2: np.ndarray, scale24=False, ax=None, *
     ax.scatter(phase1, phase2, *args, **kwargs)
 
 
-# %% ../nbs/03_plots.ipynb 7
+# %% ../nbs/03_plots.ipynb 8
 class Stroboscopic:
     """
     This class can be used to make a stroboscopic plot of the entrainment of an oscillator to a sudden shift in schedule
@@ -362,7 +350,7 @@ class Stroboscopic:
                            scale_units='xy', angles='xy', scale=1, color=col)
 
 
-# %% ../nbs/03_plots.ipynb 10
+# %% ../nbs/03_plots.ipynb 11
 def plot_mae(dlmo_actual: np.ndarray, 
              dlmo_pred: np.ndarray, 
              norm_to: float = None, 
@@ -401,7 +389,7 @@ def plot_mae(dlmo_actual: np.ndarray,
 
 
 
-# %% ../nbs/03_plots.ipynb 11
+# %% ../nbs/03_plots.ipynb 12
 def plot_torus(phase1: np.ndarray, phase2: np.ndarray, scale24=False, ax=None, *args, **kwargs):
 
     if ax is None:

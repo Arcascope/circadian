@@ -66,13 +66,13 @@ class CircadianModel(ABC):
             time using the given light estimate vector using RK4
         """
         n = len(ts)
-        sol = np.zeros((state.shape[0],n))
-        sol[:,0] = state
+        sol = np.zeros((*state.shape,n))
+        sol[...,0] = state
         for idx in range(1,n):
             state = self.step_rk4(state = state, 
                                         light_val=light_est[idx], 
                                         dt = ts[idx]-ts[idx-1])
-            sol[:,idx] = state
+            sol[...,idx] = state
         return sol 
 
     @staticmethod
@@ -245,18 +245,18 @@ class Forger99Model(CircadianModel):
         returns dydt numpy array.
         """
 
-        x = y[0]
-        xc = y[1]
-        n = y[2]
+        x = y[...,0]
+        xc = y[...,1]
+        n = y[...,2]
 
         Bhat = self.G * (1.0 - n) * self.alpha0(light=light) * \
             (1 - 0.4 * x) * (1 - 0.4 * xc)
 
-        dydt = np.zeros(3)
-        dydt[0] = np.pi / 12.0 * (xc + Bhat)
-        dydt[1] = np.pi / 12.0 * (self.mu * (xc - 4.0 / 3.0 * pow(xc, 3.0)) - x * (
+        dydt = np.zeros_like(y)
+        dydt[...,0] = np.pi / 12.0 * (xc + Bhat)
+        dydt[...,1] = np.pi / 12.0 * (self.mu * (xc - 4.0 / 3.0 * pow(xc, 3.0)) - x * (
             pow(24.0 / (0.99669 * self.taux), 2.0) + self.kparam * Bhat))
-        dydt[2] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
+        dydt[...,2] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
 
         return (dydt)
     
@@ -312,20 +312,11 @@ class Forger99Model(CircadianModel):
         pass
     
 
-# %% ../nbs/00_models.ipynb 15
+# %% ../nbs/00_models.ipynb 16
 class TwoPopulationModel(CircadianModel):
     """ A simple python implementation of the two population human model from Hannay et al 2019"""
 
     def __init__(self, params: dict= None):
-        """
-        Create a two population model by passing in a Light Function as a function of time.
-
-        This will create a model with the default parameter values as given in Hannay et al 2019.
-
-        This class can be used to simulate and plot the results of the given light schedule on the circadian phase
-        and amplitude.
-        """
-
         # Set the parameters to the published values by default
         self._default_params()
         if params:
@@ -430,19 +421,15 @@ class TwoPopulationModel(CircadianModel):
         return (self.alpha_0 * pow(light, self.p) /
                 (pow(light, self.p) + self.I0))
 
-    def derv(self, y: np.ndarray, light: float):
-        """
-        This defines the ode system for the two population model.
-        derv(self,t,y)
-        returns dydt numpy array.
+    def derv(self, 
+             y: np.ndarray, 
+             light: float):
 
-        """
-
-        Rv = y[0]
-        Rd = y[1]
-        Psiv = y[2]
-        Psid = y[3]
-        n = y[4]
+        Rv = y[...,0]
+        Rd = y[...,1]
+        Psiv = y[...,2]
+        Psid = y[...,3]
+        n = y[...,4]
 
         Bhat = self.G * (1.0 - n) * self.alpha0(light=light)
 
@@ -451,17 +438,16 @@ class TwoPopulationModel(CircadianModel):
         LightPhase = self.sigma * Bhat - self.A1 * Bhat * 0.5 * (pow(Rv, 3.0) + 1.0 / Rv) * np.sin(
             Psiv + self.BetaL) - self.A2 * Bhat * 0.5 * (1.0 + pow(Rv, 8.0)) * np.sin(2.0 * Psiv + self.BetaL2)
 
-        dydt = np.zeros(5)
-
-        dydt[0] = -self.gamma * Rv + self.Kvv / 2.0 * Rv * (1 - pow(Rv, 4.0)) + self.Kdv / 2.0 * Rd * (
+        dydt = np.zeros_like(y)
+        dydt[...,0] = -self.gamma * Rv + self.Kvv / 2.0 * Rv * (1 - pow(Rv, 4.0)) + self.Kdv / 2.0 * Rd * (
             1 - pow(Rv, 4.0)) * np.cos(Psid - Psiv) + LightAmp
-        dydt[1] = -self.gamma * Rd + self.Kdd / 2.0 * Rd * \
+        dydt[...,1] = -self.gamma * Rd + self.Kdd / 2.0 * Rd * \
             (1 - pow(Rd, 4.0)) + self.Kvd / 2.0 * Rv * (1.0 - pow(Rd, 4.0)) * np.cos(Psid - Psiv)
-        dydt[2] = 2.0 * np.pi / self.tauV + self.Kdv / 2.0 * Rd * \
+        dydt[...,2] = 2.0 * np.pi / self.tauV + self.Kdv / 2.0 * Rd * \
             (pow(Rv, 3.0) + 1.0 / Rv) * np.sin(Psid - Psiv) + LightPhase
-        dydt[3] = 2.0 * np.pi / self.tauD - self.Kvd / 2.0 * \
+        dydt[...,3] = 2.0 * np.pi / self.tauD - self.Kvd / 2.0 * \
             Rv * (pow(Rd, 3.0) + 1.0 / Rd) * np.sin(Psid - Psiv)
-        dydt[4] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
+        dydt[...,4] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
         return (dydt)
     
     def integrate_observer(self, ts: np.ndarray, 
@@ -508,7 +494,7 @@ class TwoPopulationModel(CircadianModel):
 
 
 
-# %% ../nbs/00_models.ipynb 17
+# %% ../nbs/00_models.ipynb 18
 class SinglePopModel(CircadianModel):
     """
         A simple python program to integrate the human circadian rhythms model 
@@ -585,18 +571,13 @@ class SinglePopModel(CircadianModel):
         return (self.alpha_0 * pow(light, self.p) /
                 (pow(light, self.p) + self.I0))
     
-    
     def derv(self, 
-             y: np.ndarray, 
-             light: float):
-        """
-        This defines the ode system for the single population model.
-        derv(self,t,y)
-        returns dydt numpy array.
-        """
-        R = y[0]
-        Psi = y[1]
-        n = y[2]
+             y: np.ndarray, # circadian state where the last dimension is the state variable
+             light: float, # light level in lux 
+             ):
+        R = y[...,0]
+        Psi = y[..., 1]
+        n = y[...,2]
 
         Bhat = self.G * (1.0 - n) * self.alpha0(light=light)
         LightAmp = self.A1 * 0.5 * Bhat * (1.0 - pow(R, 4.0)) * np.cos(Psi + self.BetaL1) + self.A2 * 0.5 * Bhat * R * (
@@ -604,13 +585,12 @@ class SinglePopModel(CircadianModel):
         LightPhase = self.sigma * Bhat - self.A1 * Bhat * 0.5 * (pow(R, 3.0) + 1.0 / R) * np.sin(
             Psi + self.BetaL1) - self.A2 * Bhat * 0.5 * (1.0 + pow(R, 8.0)) * np.sin(2.0 * Psi + self.BetaL2)
 
-        dydt = np.zeros(3)
-
-        dydt[0] = -1.0 * self.gamma * R + self.K * \
+        dydt = np.zeros_like(y)
+        dydt[...,0] = -1.0 * self.gamma * R + self.K * \
             np.cos(self.Beta1) / 2.0 * R * (1.0 - pow(R, 4.0)) + LightAmp
-        dydt[1] = 2*np.pi/self.tau + self.K / 2.0 * \
+        dydt[...,1] = 2*np.pi/self.tau + self.K / 2.0 * \
             np.sin(self.Beta1) * (1 + pow(R, 4.0)) + LightPhase
-        dydt[2] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
+        dydt[...,2] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
 
         return (dydt)
 
