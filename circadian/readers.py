@@ -75,6 +75,7 @@ class WearableData:
     phase_measure_times: np.ndarray = None
     subject_id: str = "unknown-subject"
     data_id: str = "unknown-data-id"
+    meta_data: Dict[str, Any] = None
     
     @property
     def date_time(self) -> np.ndarray:
@@ -142,7 +143,12 @@ class WearableData:
         assert "time_total" in self._dataframe.columns
         
     def _copy_with_metadata(self, df: pd.DataFrame) -> "WearableData":
-        return WearableData(df, self.phase_measure, self.phase_measure_times, self.subject_id, self.data_id)
+        return WearableData(df, 
+                            self.phase_measure, 
+                            self.phase_measure_times, 
+                            self.subject_id, 
+                            self.data_id, 
+                            meta_data=self.meta_data)
 
     def build_sleep_chunks(self, chunk_jump_hrs: float = 12.0) -> List[np.ndarray]:
         time_total = self.time_total
@@ -185,6 +191,9 @@ class WearableData:
         df = self._dataframe.loc[(self._dataframe.date_time > timestamp_start) & (self._dataframe.date_time < timestamp_end)]
         return self._copy_with_metadata(df)
     
+    def __getitem__(self, key: str) -> pd.Series:
+        return self._dataframe[key]
+
     def to_json(self, filename: str = None):
         filename = filename if filename is not None else 'wearable_' + self.subject_id + '.json'
         self._dataframe.to_json(filename)
@@ -192,6 +201,24 @@ class WearableData:
     def from_json(filename: str) -> 'WearableData':
         df = pd.read_json(filename)
         return WearableData(df)
+    
+    def head(self, n: int = 5) -> pd.DataFrame:
+        return self._dataframe.head(n)
+    
+    def tail(self, n: int = 5) -> pd.DataFrame:
+        return self._dataframe.tail(n) 
+    
+    def filter(self, filter_fn: Callable[[pd.DataFrame], pd.DataFrame]) -> 'WearableData':
+        return self._copy_with_metadata(filter_fn(self._dataframe))
+    
+    def aggregate(self, agg_fn: Callable[[pd.DataFrame], pd.DataFrame]) -> 'WearableData':
+        return self._copy_with_metadata(agg_fn(self._dataframe))
+    
+    def groupby(self, by: str) -> 'WearableData':
+        return self._copy_with_metadata(self._dataframe.groupby(by))
+    
+    def join(self, other: 'WearableData', how = 'inner') -> 'WearableData':
+        return self._copy_with_metadata(self._dataframe.join(other._dataframe, on='date_time', how=how))
 
 
 # %% ../nbs/02_readers.ipynb 8
@@ -329,10 +356,10 @@ def plot_hr_steps(self: WearableData,
 
 
 # %% ../nbs/02_readers.ipynb 14
-def combine_wearable_streams(steps: pd.DataFrame, 
-                                heartrate: pd.DataFrame,
-                                wake: pd.DataFrame,
-                                bin_minutes: int = 6,
+def combine_wearable_streams(steps: pd.DataFrame, # dataframe with columns 'start', 'end', 'steps'
+                                heartrate: pd.DataFrame, # dataframe with columns 'timestamp', 'heartrate'
+                                wake: pd.DataFrame, # dataframe with columns 'start', 'end', 'wake'
+                                bin_minutes: int = 6, # bin size in minutes for the resampled combined data
                                 subject_id: str="unknown-subject",
                                 data_id: str ="Exporter",
                                 sleep_trim: bool = False, # drop any entries without a sleep-wake entry
@@ -388,6 +415,9 @@ def combine_wearable_streams(steps: pd.DataFrame,
     time_start = WearableData.utc_to_hrs(df.timestamp.iloc[0])
     df['time_total'] = time_start + (df.date_time-df.date_time.iloc[0])/3600.0
     
+    if sleep_trim:
+        df.dropna(subset=['wake'], inplace=True)
+    
     aw = WearableData(_dataframe=df,
                     subject_id=subject_id,
                     data_id=data_id
@@ -437,11 +467,21 @@ def read_standard_json( filepath: str, # path to json file
 
 # %% ../nbs/02_readers.ipynb 15
 @patch 
-def fill_nan_heartrate(self: WearableData, with_value: float = 0.0):
-    """Fill in any nan values in the heartrate data using the specified method"""
-    self.heartrate = pd.Series(self.heartrate).fillna(with_value).to_numpy()
+def fillna(self: WearableData, 
+             column_name: str = "heartrate", # column to fill in the dataframe
+             with_value: float = 0.0, # value to fill with
+             inplace: bool = False # if true, the WearableData object will be modified in place
+             ) -> WearableData:
+    
+    if inplace:
+        self._dataframe[column_name].fillna(with_value, inplace=True)
+    else:
+        df = self._dataframe.copy()
+        filled_column = df[column_name].fillna(with_value)
+        df[column_name] = filled_column 
+        return self._copy_with_metadata(df)
 
-# %% ../nbs/02_readers.ipynb 21
+# %% ../nbs/02_readers.ipynb 29
 @patch 
 def plot_light_activity(self: WearableData, 
                         show=True, 
@@ -485,7 +525,7 @@ def plot_light_activity(self: WearableData,
             return ax
 
 
-# %% ../nbs/02_readers.ipynb 23
+# %% ../nbs/02_readers.ipynb 31
 def read_actiwatch(filepath: str, # path to actiwatch csv file
                         MIN_LIGHT_THRESHOLD=5000, # used to trim off empty data at the beginning and end of the file, must reach this amount of light to be included. Turn this off can setting this to 0 or negative
                         round_data=True, # round the data to the nearest bin_minutes
