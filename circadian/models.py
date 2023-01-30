@@ -16,10 +16,11 @@ import pylab as plt
 from pathlib import Path
 import sys
 from numba import jit, njit, prange
+from typing import List, Tuple, Dict, Union, Optional, Callable
 
 
 
-# %% ../nbs/00_models.ipynb 6
+# %% ../nbs/00_models.ipynb 7
 class DynamicalTrajectory:
     
     def __init__(self, 
@@ -32,12 +33,28 @@ class DynamicalTrajectory:
     def __call__(self, t: float) -> np.ndarray:
         return np.interp(t, self.ts, self.states)
     
-    def __getitem__(self, idx: int) -> (float, np.ndarray):
+    def __getitem__(self, idx: int) -> Tuple[float, np.ndarray]:
         return self.ts[idx], self.states[idx]
+    
+    def __len__(self) -> int:
+        return len(self.ts)
+    
+    def get_batch(self,index: int) -> 'DynamicalTrajectory':
+        if self.states.ndim >= 3:
+            return DynamicalTrajectory(self.ts, self.states[index, :, :])
+        else:
+            return DynamicalTrajectory(self.ts, self.states)
+        
+    @property
+    def batch_size(self) -> int:
+        if self.states.ndim >= 3:
+            return self.states.shape[0]
+        else:
+            return 1
     
     
 
-# %% ../nbs/00_models.ipynb 7
+# %% ../nbs/00_models.ipynb 8
 class CircadianModel(ABC):
 
     def __init__(self, params: dict = None):
@@ -118,7 +135,8 @@ class CircadianModel(ABC):
         """
         pass
 
-    def default_initial_conditions(self):
+    @property
+    def default_initial_conditions(self) -> np.ndarray:
         """
         Gives some default initial conditions for the model
         """
@@ -137,14 +155,14 @@ class CircadianModel(ABC):
                                 light_est: np.ndarray, #Array of light estimates, should be the same length as ts
                                 num_loops: int = 30) -> np.ndarray: #Estimate the starting values by looping the given light_estimate
         
-        ic = self.default_initial_conditions()
+        ic = self.default_initial_conditions
         for _ in range(num_loops):
             sol = self.integrate_model(ts, light_est, ic).states
             ic = sol[..., -1]
         return ic
 
 
-# %% ../nbs/00_models.ipynb 9
+# %% ../nbs/00_models.ipynb 10
 class Forger99Model(CircadianModel):
     """ A simple python implementation of the two population human model from Hannay et al 2019"""
 
@@ -280,6 +298,7 @@ class Forger99Model(CircadianModel):
         y = state[1]*-1.0
         return np.angle(x + complex(0,1)*y)
         
+    @property
     def default_initial_conditions(self) -> np.ndarray:
         """
         x= –0.3 and xc= –1.13 are the default initial conditions for the model
@@ -302,7 +321,7 @@ class Forger99Model(CircadianModel):
         pass
     
 
-# %% ../nbs/00_models.ipynb 21
+# %% ../nbs/00_models.ipynb 22
 class TwoPopulationModel(CircadianModel):
     """ A simple python implementation of the two population human model from Hannay et al 2019"""
 
@@ -467,7 +486,8 @@ class TwoPopulationModel(CircadianModel):
     def phase_difference(state):
         return state[2] - state[3]
     
-    def default_initial_conditions(self):
+    @property
+    def default_initial_conditions(self) -> np.ndarray:
         return np.array([1.0,1.0,0.0,0.10,0.0])
     
     @staticmethod
@@ -480,7 +500,7 @@ class TwoPopulationModel(CircadianModel):
 
 
 
-# %% ../nbs/00_models.ipynb 23
+# %% ../nbs/00_models.ipynb 24
 class SinglePopModel(CircadianModel):
     """
         A simple python program to integrate the human circadian rhythms model 
@@ -579,25 +599,6 @@ class SinglePopModel(CircadianModel):
         dydt[...,2] = 60.0 * (self.alpha0(light=light) * (1.0 - n) - self.delta * n)
 
         return (dydt)
-
-    # def integrate_model(self,
-    #                     ts: np.ndarray,
-    #                     light_est: np.ndarray,
-    #                     state: np.ndarray = None):
-    #     """
-    #         Integrate the spmodel forward in time using the given light estimate vector
-    #     """
-    #     params = self.get_parameters_array()
-    #     n = len(ts)
-    #     sol = np.zeros((n, 3))
-    #     fastclock.integrate_spmodel_save(
-    #         c_void_p(sol.ctypes.data),
-    #         c_void_p(state.ctypes.data),
-    #         c_void_p(ts.ctypes.data),
-    #         c_void_p(light_est.ctypes.data),
-    #         c_void_p(params.ctypes.data),
-    #         c_int(n))
-    #     return(np.transpose(sol))
         
 
     def integrate_observer(self, ts: np.ndarray, light_est: np.ndarray, u0: np.ndarray = None, observer=None):
@@ -617,7 +618,7 @@ class SinglePopModel(CircadianModel):
         return self.observer(trajectory, SinglePopModel.CBTObs)
 
     def observer(self, trajectory: np.ndarray, observer_func: callable) -> np.array:
-        zero_crossings = np.where(np.diff(np.sign(observer_func(0.0, trajectory.states))))[0]
+        zero_crossings = np.where(np.diff(np.sign(observer_func(0.0, trajectory.states)), axis=-1))[0]
         return trajectory.ts[zero_crossings]
 
     def DLMOObs(t, state) -> float:
@@ -632,6 +633,7 @@ class SinglePopModel(CircadianModel):
     def phase(state) -> float:
         return(state[1])
     
+    @property
     def default_initial_conditions(self) -> np.ndarray:
         """
         Gives some default initial conditions for the model

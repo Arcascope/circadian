@@ -354,7 +354,9 @@ class Stroboscopic:
 def plot_mae(dlmo_actual: np.ndarray, 
              dlmo_pred: np.ndarray, 
              norm_to: float = None, 
-             ax=None,  *args, **kwargs):
+             ax=None,  
+             *args, 
+             **kwargs):
 
     dlmo_actual = np.fmod(dlmo_actual, 24.0)
     dlmo_pred = np.fmod(dlmo_pred, 24.0)
@@ -390,7 +392,10 @@ def plot_mae(dlmo_actual: np.ndarray,
 
 
 # %% ../nbs/03_plots.ipynb 12
-def plot_torus(phase1: np.ndarray, phase2: np.ndarray, scale24=False, ax=None, *args, **kwargs):
+def plot_torus(phase1: np.ndarray, 
+               phase2: np.ndarray, 
+               scale24=False, 
+               ax=None, *args, **kwargs):
 
     if ax is None:
         plt.figure()

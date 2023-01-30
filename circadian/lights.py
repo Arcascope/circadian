@@ -324,10 +324,8 @@ class PRCFinder:
         tend=72.0+8.0+30.0+CRFinal
         ts = np.arange(0,tend,0.10)
         light_vals = np.array([PhaseResponseCurveLight.light_czeiler_type0(t, CRlength) for t in ts])
-        if model.__str__() == "Forger99Model":
-            CBT = model.integrate_observer(ts, light_vals, initial_value, observer=0.0)
-        else:
-            CBT = model.integrate_observer(ts, light_vals, initial_value, observer=type(model).CBTObs)
+        trajectory = model(ts, light_vals, initial_value)
+        CBT = model.cbt(trajectory=trajectory)
         shift=(CBT[0]-CBT[-1]) % 24.0 #finds a neg number between zero and -24.0
 
         #now shifts live in the range (-12,12) hours
@@ -341,7 +339,7 @@ class PRCFinder:
     
         
 
-# %% ../nbs/01_lights.ipynb 23
+# %% ../nbs/01_lights.ipynb 22
 class IntensityResponseCurveLight:
     
     def __init__(self) -> None:
@@ -378,7 +376,7 @@ class IntensityResponseCurveLight:
 
 
 
-# %% ../nbs/01_lights.ipynb 24
+# %% ../nbs/01_lights.ipynb 23
 class DosageResponseCurve:
     
     def __init__(self) -> None:
