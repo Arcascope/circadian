@@ -11,7 +11,8 @@ import numpy as np
 from pathlib import Path
 import sys
 from .utils import cut_phases_12
-# sys.path.append(str(Path(__file__).parent))
+from .models import SinglePopModel
+from .lights import *
 
 
 # %% ../nbs/03_plots.ipynb 5
@@ -229,7 +230,14 @@ class Actogram:
                     yvals_split[idx], xx-error_split[idx]+24.0, xx+error_split[idx]+24.0, alpha=alpha_error, *args, **kwargs)
 
 
-def plot_mae(dlmo_actual: np.ndarray, dlmo_pred: np.ndarray, norm_to: float = None, ax=None,  *args, **kwargs):
+
+# %% ../nbs/03_plots.ipynb 6
+def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
+             dlmo_pred: np.ndarray,  # predicted to be in hours
+             norm_to: float = None, 
+             ax=None,  
+             *args, 
+             **kwargs):
 
     dlmo_actual = np.fmod(dlmo_actual, 24.0)
     dlmo_pred = np.fmod(dlmo_pred, 24.0)
@@ -248,7 +256,6 @@ def plot_mae(dlmo_actual: np.ndarray, dlmo_pred: np.ndarray, norm_to: float = No
     errors = dlmo_pred-dlmo_actual
     print(f"The MAE is: {np.mean(abs(errors))}")
     print(f"Within one hour {np.sum(abs(errors)<=1.0)}/{len(dlmo_pred)}")
-
     print(errors)
 
     ax.scatter(dlmo_actual, dlmo_pred, *args, **kwargs)
@@ -263,6 +270,8 @@ def plot_mae(dlmo_actual: np.ndarray, dlmo_pred: np.ndarray, norm_to: float = No
     ax.set_xlabel("Experimental DLMO (hrs)")
 
 
+
+# %% ../nbs/03_plots.ipynb 7
 def plot_torus(phase1: np.ndarray, phase2: np.ndarray, scale24=False, ax=None, *args, **kwargs):
 
     if ax is None:
@@ -279,7 +288,7 @@ def plot_torus(phase1: np.ndarray, phase2: np.ndarray, scale24=False, ax=None, *
     ax.scatter(phase1, phase2, *args, **kwargs)
 
 
-# %% ../nbs/03_plots.ipynb 8
+# %% ../nbs/03_plots.ipynb 10
 class Stroboscopic:
     """
     This class can be used to make a stroboscopic plot of the entrainment of an oscillator to a sudden shift in schedule
@@ -350,7 +359,7 @@ class Stroboscopic:
                            scale_units='xy', angles='xy', scale=1, color=col)
 
 
-# %% ../nbs/03_plots.ipynb 11
+# %% ../nbs/03_plots.ipynb 13
 def plot_mae(dlmo_actual: np.ndarray, 
              dlmo_pred: np.ndarray, 
              norm_to: float = None, 
@@ -391,7 +400,7 @@ def plot_mae(dlmo_actual: np.ndarray,
 
 
 
-# %% ../nbs/03_plots.ipynb 12
+# %% ../nbs/03_plots.ipynb 14
 def plot_torus(phase1: np.ndarray, 
                phase2: np.ndarray, 
                scale24=False, 

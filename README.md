@@ -46,8 +46,6 @@ trajectory_spm = spm_model.integrate_model(ts=ts, light_est=light_values, state 
 trajectory_tpm = tpm_model.integrate_model(ts=ts, light_est=light_values, state = initial_conditions_tpm)
 ```
 
-![](index_files/figure-commonmark/cell-3-output-1.png)
-
 Find the dlmos (Dim Light Melatonin Onset) a experimental measurement of
 circadian phase
 
