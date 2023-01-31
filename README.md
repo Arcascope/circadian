@@ -31,8 +31,8 @@ ts = np.arange(0, 24*30,0.10)
 light_values = slam_shift(ts, repeat_period=24*(days_night+days_day))
 
 model = Forger99Model()
-spm_model = SinglePopModel()
-tpm_model = TwoPopulationModel()
+spm_model = Hannay19()
+tpm_model = Hannay19TP()
 initial_conditions_forger = model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
 initial_conditions_spm = spm_model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
 initial_conditions_tpm = tpm_model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
@@ -41,9 +41,9 @@ initial_conditions_tpm = tpm_model.initial_conditions_loop(ts, light_est=light_v
 Integrate the models using a explicit RK4 scheme
 
 ``` python
-trajectory = model.integrate_model(ts=ts, light_est=light_values, state = initial_conditions_forger)
-trajectory_spm = spm_model.integrate_model(ts=ts, light_est=light_values, state = initial_conditions_spm)
-trajectory_tpm = tpm_model.integrate_model(ts=ts, light_est=light_values, state = initial_conditions_tpm)
+trajectory = model(ts=ts, light_est=light_values, state = initial_conditions_forger)
+trajectory_spm = spm_model(ts=ts, light_est=light_values, state = initial_conditions_spm)
+trajectory_tpm = tpm_model(ts=ts, light_est=light_values, state = initial_conditions_tpm)
 ```
 
 Find the dlmos (Dim Light Melatonin Onset) a experimental measurement of

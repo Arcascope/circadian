@@ -11,12 +11,15 @@ import numpy as np
 from pathlib import Path
 import sys
 from .utils import cut_phases_12
-from .models import SinglePopModel
+from .models import Hannay19
 from .lights import *
 
 
 # %% ../nbs/03_plots.ipynb 5
 class Actogram:
+    """ 
+        Create an Actogram visualisation of the data
+    """
 
     def __init__(self,
                  time_total: np.ndarray, # time in hours
@@ -231,7 +234,7 @@ class Actogram:
 
 
 
-# %% ../nbs/03_plots.ipynb 6
+# %% ../nbs/03_plots.ipynb 7
 def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
              dlmo_pred: np.ndarray,  # predicted to be in hours
              norm_to: float = None, 
@@ -271,42 +274,47 @@ def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
 
 
 
-# %% ../nbs/03_plots.ipynb 7
-def plot_torus(phase1: np.ndarray, phase2: np.ndarray, scale24=False, ax=None, *args, **kwargs):
+# %% ../nbs/03_plots.ipynb 9
+def plot_torus(phase1: np.ndarray, # array of phases  
+               phase2: np.ndarray, #array of phases, assumed to be the same length as phase1
+               scaled_by: float = None, # should the phases be wrapped, this just applies an fmod to the phases
+               ax=None, # axis to plot on, if None, a new figure is created
+               *args, # passed to the scatter plot
+               **kwargs, # passed to the scatter plot
+               ) -> plt.Axes:
 
     if ax is None:
         plt.figure()
         ax = plt.gca()
 
-    if scale24:
-        phase1 = np.fmod(phase1, 24.0) * np.pi/12.0
-        phase2 = np.fmod(phase2,  24.0) * np.pi/24.0
+    if scaled_by is not None:
+        phase1 = np.fmod(phase1, scaled_by) * np.pi/12.0
+        phase2 = np.fmod(phase2,  scaled_by) * np.pi/24.0
 
     phase1 = np.arctan2(np.sin(phase1), np.cos(phase1))
     phase2 = np.arctan2(np.sin(phase2), np.cos(phase2))
 
     ax.scatter(phase1, phase2, *args, **kwargs)
+    
+    return ax
 
 
-# %% ../nbs/03_plots.ipynb 10
+# %% ../nbs/03_plots.ipynb 13
 class Stroboscopic:
     """
     This class can be used to make a stroboscopic plot of the entrainment of an oscillator to a sudden shift in schedule
     """
 
     def __init__(self, 
-                 ax: plt.Axes,
-                 ts: np.ndarray,
-                amplitude: np.ndarray,
-                phase: np.ndarray,
+                 ax: plt.Axes, # The axes to plot on
+                 ts: np.ndarray, # The time series of the model
+                amplitude: np.ndarray, # The amplitude of the model, assumed to be the same length as ts
+                phase: np.ndarray, # The phase of the model, assumed to be the same length as ts
                 period: float = 24.0, # The time period between stroboscopic arrows
                 *args: tuple, #passed to the quiver plot
                 **kwargs: dict #passed to the quiver plot
         ):
-        """
-        Pass in axes and a time series data frame for the model. Make sure to pass the pandas data frame starting with 
-        the row you want to begin the stroboscopic plot
-        """
+        
         self.ts = ts
         self.R = amplitude
         self.phase = phase
@@ -358,63 +366,3 @@ class Stroboscopic:
             self.ax.quiver(Xvals[i - 1], Yvals[i - 1], Xvals[i] - Xvals[i - 1], Yvals[i] - Yvals[i - 1],
                            scale_units='xy', angles='xy', scale=1, color=col)
 
-
-# %% ../nbs/03_plots.ipynb 13
-def plot_mae(dlmo_actual: np.ndarray, 
-             dlmo_pred: np.ndarray, 
-             norm_to: float = None, 
-             ax=None,  
-             *args, 
-             **kwargs):
-
-    dlmo_actual = np.fmod(dlmo_actual, 24.0)
-    dlmo_pred = np.fmod(dlmo_pred, 24.0)
-
-    # Make the plot range from from -12 to 12
-    dlmo_pred = np.array([cut_phases_12(d) for d in list(dlmo_pred)])
-    dlmo_actual = np.array([cut_phases_12(d) for d in list(dlmo_actual)])
-
-    if norm_to is not None:
-        dlmo_actual = dlmo_actual - np.mean(dlmo_actual)+norm_to
-
-    if ax is None:
-        plt.figure()
-        ax = plt.gca()
-
-    errors = dlmo_pred-dlmo_actual
-    print(f"The MAE is: {np.mean(abs(errors))}")
-    print(f"Within one hour {np.sum(abs(errors)<=1.0)}/{len(dlmo_pred)}")
-
-    print(errors)
-
-    ax.scatter(dlmo_actual, dlmo_pred, *args, **kwargs)
-    ax.plot(np.arange(-12, 12, 1), np.arange(-12, 12, 1),
-            ls='--', color='gray', lw=2.0)
-    ax.plot(np.arange(-12, 12, 1), np.arange(-12, 12, 1)+1,
-            ls='--', color='blue', lw=1.0)
-    ax.plot(np.arange(-12, 12, 1), np.arange(-12, 12, 1)-1,
-            ls='--', color='blue', lw=1.0)
-
-    ax.set_ylabel("Model Prediction (hrs)")
-    ax.set_xlabel("Experimental DLMO (hrs)")
-
-
-
-# %% ../nbs/03_plots.ipynb 14
-def plot_torus(phase1: np.ndarray, 
-               phase2: np.ndarray, 
-               scale24=False, 
-               ax=None, *args, **kwargs):
-
-    if ax is None:
-        plt.figure()
-        ax = plt.gca()
-
-    if scale24:
-        phase1 = np.fmod(phase1, 24.0) * np.pi/12.0
-        phase2 = np.fmod(phase2,  24.0) * np.pi/24.0
-
-    phase1 = np.arctan2(np.sin(phase1), np.cos(phase1))
-    phase2 = np.arctan2(np.sin(phase2), np.cos(phase2))
-
-    ax.scatter(phase1, phase2, *args, **kwargs)

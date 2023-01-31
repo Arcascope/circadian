@@ -5,7 +5,7 @@ __all__ = ['esri', 'esri_trajectory']
 
 # %% ../nbs/04_metrics.ipynb 3
 import numpy as np
-from .models import SinglePopModel
+from .models import Hannay19
 from .utils import phase_ic_guess
 from .readers import WearableData
 
@@ -15,7 +15,7 @@ def esri(awObj: WearableData,
                 multiplier: float = 1.0,
                 num_days: float = 4.5):
 
-    spmodel = SinglePopModel({'K': 0.0, 'gamma': gamma})
+    spmodel = Hannay19({'K': 0.0, 'gamma': gamma})
     psi0 = phase_ic_guess(awObj.time_total[0])
 
     idx = awObj.time_total < awObj.time_total[0]+24*num_days
@@ -23,23 +23,23 @@ def esri(awObj: WearableData,
         awObj.time_total[idx], multiplier*awObj.steps[idx],
         np.array([0.10, psi0, 0.0])
     )
-    return awObj.time_total[idx], sol
+    return sol.ts, sol.states
 
 
 
 # %% ../nbs/04_metrics.ipynb 5
-def esri_trajectory(awObj,
+def esri_trajectory(awObj: WearableData,
                            gamma: float = 0.0,
                            multiplier: float = 1.0,
                            num_days: float = 4.5,
                            ):
 
-    spmodel = SinglePopModel({'K': 0.0, 'gamma': gamma})
+    spmodel = Hannay19({'K': 0.0, 'gamma': gamma})
     compactness_trajectory = []
     time_trajectory = []
     timestamps = []
     timeStart = awObj.time_total[0]
-    timestampStart = awObj.date_time[0]
+    timestampStart = awObj.timestamp[0]
     while timeStart < awObj.time_total[-1] - 24*num_days:
         try:
             psi0 = phase_ic_guess(timeStart)
@@ -47,10 +47,11 @@ def esri_trajectory(awObj,
             tsFilter = awObj.time_total[idxStart]
             idx = tsFilter < np.array(tsFilter[0])+24*num_days
             stepsFilter = awObj.steps[idxStart]
-            sol = spmodel.integrate_model(
+            trajectory = spmodel.integrate_model(
                 tsFilter[idx], multiplier*stepsFilter[idx],
                 np.array([0.10, psi0, 0.0])
             )
+            sol = trajectory.states
             if sol[0, -1] > 0.0:
                 compactness_trajectory.append(sol[0, -1])
                 time_trajectory.append(timeStart)

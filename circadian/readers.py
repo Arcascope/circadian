@@ -518,7 +518,7 @@ def fillna(self: WearableData,
         df[column_name] = filled_column 
         return self._copy_with_metadata(df)
 
-# %% ../nbs/02_readers.ipynb 35
+# %% ../nbs/02_readers.ipynb 33
 @patch 
 def plot_light_activity(self: WearableData, 
                         show=True, 
@@ -562,7 +562,7 @@ def plot_light_activity(self: WearableData,
             return ax
 
 
-# %% ../nbs/02_readers.ipynb 37
+# %% ../nbs/02_readers.ipynb 35
 def read_actiwatch(filepath: str, # path to actiwatch csv file
                         MIN_LIGHT_THRESHOLD=5000, # used to trim off empty data at the beginning and end of the file, must reach this amount of light to be included. Turn this off can setting this to 0 or negative
                         round_data=True, # round the data to the nearest bin_minutes
