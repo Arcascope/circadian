@@ -9,7 +9,7 @@ from torch import jit
 from datetime import datetime
 import argparse
 from .plots import Actogram
-from .models import SinglePopModel
+from .models import Hannay19
 from .readers import WearableData, read_standard_csv, read_standard_json
 from .utils import phase_ic_guess
 from .sleep import cluster_sleep_periods_scipy, sleep_midpoint
@@ -182,7 +182,7 @@ def main_acto():
 
     if args.dlmo:
         ic = np.array([0.70, phase_ic_guess(ts[0]), 0.0])
-        spm2 = SinglePopModel({'tau': args.period})
+        spm2 = Hannay19({'tau': args.period})
         dlmo_runs = spm2.integrate_observer(ts, args.multiplier*steps, ic)
         acto.plot_phasemarker(
             dlmo_runs, error=np.ones(len(dlmo_runs)), color='blue')
@@ -192,7 +192,7 @@ def main_acto():
 
     if args.cbt:
         ic = np.array([0.70, phase_ic_guess(ts[0]), 0.0])
-        spm2 = SinglePopModel({'tau': args.period})
+        spm2 = Hannay19({'tau': args.period})
         cbt_runs = spm2.integrate_observer(
             ts, args.multiplier*steps, ic, observer=SinglePopModel.CBTObs)
         acto.plot_phasemarker(
@@ -206,7 +206,7 @@ def main_acto():
     #     ts_flat = np.hstack(ts)
     #     steps_flat = np.hstack(steps)
     #     if awObj.wake is None:
-    #         spm2 = SinglePopModel({'tau' : args.period})
+    #         spm2 = Hannay19({'tau' : args.period})
     #         sol= spm2.integrate_model(ts_flat, args.multiplier*steps_flat, phase_ic_guess(ts_flat[0]))
     #         wake_score = np.diff(sol[3,:], prepend=0) > 0
     #     else:
@@ -237,7 +237,7 @@ import torch
 from torch import jit
 import circadian
 from .readers import WearableData, read_standard_csv, read_standard_json
-from .models import SinglePopModel
+from .models import Hannay19
 from .utils import phase_ic_guess
 from .metrics import *
 from .utils import simple_norm_stepshr_sleep_classifier
