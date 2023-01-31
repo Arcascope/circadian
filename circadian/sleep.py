@@ -22,31 +22,26 @@ from scipy.integrate import solve_ivp
 from math import *
 import pylab as plt
 
-from .utils import *
 from scipy.optimize import minimize
+from .utils import *
+from .models import * 
+from .lights import *
+from .plots import *
 
-# %% ../nbs/05_sleep.ipynb 4
+# %% ../nbs/05_sleep.ipynb 5
 class TwoProcessModel:
 
-    def __init__(self, 
-                 timetotal: np.ndarray,
-                 R: np.ndarray, 
-                 Psi: np.ndarray, 
-                 Steps: np.ndarray):
-
-        self.StepsFunc = lambda t: np.interp(t, timetotal, Steps)
-        self.PhaseFunc = lambda t:  np.interp(t, timetotal, Psi)
-        self.AmplitudeFunc =  lambda t: np.interp(t, timetotal, R)
-        self.Steps = Steps
-        self.timetotal = timetotal
-        self.steps_wake_threshold = 10.0
+    def __init__(self, steps_wake_threshold: float = 10.0):
+        self.steps_wake_threshold = steps_wake_threshold
         self.awake = True
 
-    def check_wake_status(self, 
-                          awake: bool, 
-                          h: float, 
-                          c: float):
+    @staticmethod
+    def check_wake_status(awake: bool, # current wake status
+                          h: float,  # homeostat value
+                          phase: float #circadian phase
+                          ) -> bool:
 
+        c = np.cos(phase)
         H_minus = 0.17
         H_plus = 0.6
         homeostat_a = 0.10
@@ -58,40 +53,60 @@ class TwoProcessModel:
 
         if above_threshold:
             return False
+        elif below_threshold:
+            return True
         else:
-            if below_threshold:
-                return True
-            else:
-                return awake
+            return awake
 
     def dhomeostat(self, 
-                   t: float , 
-                   u: float ):
+                   homeostat: float, # homeostat value
+                   steps: float, # steps value
+                   phase: float, #circadian phase
+                   ) -> float:
 
-        h = u[0]
-        mu_s, tau_1, tau_s = (1.0, 18.2, 4.2)
-        self.awake = self.check_wake_status(
-            self.awake, h, 1.0*np.cos(self.PhaseFunc(t)))
-        steps_wake = self.StepsFunc(t) > self.steps_wake_threshold or self.awake
+        h = homeostat[0]
+        tau_s = 4.2  # hours
+        tau_w = 18.2  # hours
+        mu_s = 1
+        
+        step_awake = (steps > self.steps_wake_threshold) or self.awake
+        dH = (mu_s - h) / tau_w if step_awake else -h / tau_s
+        self.awake = TwoProcessModel.check_wake_status(
+            self.awake, 
+            h, 
+            phase
+            )
+        return np.array([dH]) 
+    
+    # implement a RK4 solver
+    def step_rk4(self,
+                 state: np.ndarray,
+                 steps: float,
+                 phase: float,
+                 dt=0.10):
 
-        dh = np.zeros(1)
-        if steps_wake:
-            dh[0] = (mu_s - h) / tau_1
-        else:
-            dh[0] = -h / tau_s
-        return dh
+        k1 = self.dhomeostat(state, steps, phase) 
+        k2 = self.dhomeostat(state + k1 * dt / 2.0, steps, phase)
+        k3 = self.dhomeostat(state + k2 * dt / 2.0, steps, phase)
+        k4 = self.dhomeostat(state + k3 * dt, steps, phase)
+        state = state + (dt / 6.0) * (k1 + 2.0*k2 + 2.0*k3 + k4)
+        return state
 
     def __call__(self, 
-                 initial_value: float = 0.50 #  initial value for the homeostat
-                 ):
+                 ts: np.ndarray,
+                 phase: np.ndarray,
+                 steps: np.ndarray,
+                 initial_value: np.array = np.array([0.50]) #  initial value for the homeostat
+                 ) -> DynamicalTrajectory:
+        sol = np.zeros((len(initial_value), len(ts)))
+        current_state = initial_value
+        sol[:,0] = current_state
+        for idx in range(1,len(ts)):
+            current_state = self.step_rk4(current_state, steps[idx], phase[idx])
+            sol[:,idx] = current_state
+        return(DynamicalTrajectory(ts, np.array(sol)))
 
-        sol = solve_ivp(self.dhomeostat,
-                        (self.timetotal[0], self.timetotal[-1]), 
-                        [initial_value],
-                        t_eval = self.timetotal)
-        return(sol.y[0,:])
-
-# %% ../nbs/05_sleep.ipynb 5
+# %% ../nbs/05_sleep.ipynb 7
 def sleep_midpoint(timetotal: np.ndarray, 
                    Wake: np.ndarray, 
                    durations=True):
@@ -139,7 +154,7 @@ def sleep_midpoint(timetotal: np.ndarray,
 
 
 
-# %% ../nbs/05_sleep.ipynb 6
+# %% ../nbs/05_sleep.ipynb 8
 def cluster_sleep_periods_scipy(wake_data: np.ndarray, 
                                 epsilon: float,
                                 makeplot: bool = False,

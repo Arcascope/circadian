@@ -9,42 +9,63 @@ Circadian
 pip install circadian
 ```
 
-## How to use
+## Quick start
 
-The below shows how to simulate a slam shift schedule for three models
+The below shows how to simulate a shift worker schedule for three models
 and make an actogram plot
 
 ``` python
-# Example run for forger 99 vdp model
-
 from circadian.plots import Actogram
 from circadian.models import *
-from circadian.lights import *
+from circadian.lights import Light
 
 import matplotlib.pyplot as plt
 import numpy as np
 
+days_night = 3
+days_day = 2
+slam_shift = Light.ShiftWorkLight(lux = 300.0, 
+                                  dayson=days_night, 
+                                  daysoff=days_day)
+ts = np.arange(0, 24*30,0.10)
+light_values = slam_shift(ts, repeat_period=24*(days_night+days_day))
 
-ts =  np.arange(0.0, 24*100, 0.1)
-light_values = np.array([SlamShift(t, Intensity=150.0) for t in ts])
 model = Forger99Model()
 spm_model = SinglePopModel()
 tpm_model = TwoPopulationModel()
 initial_conditions_forger = model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
 initial_conditions_spm = spm_model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
 initial_conditions_tpm = tpm_model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
-dlmo = model.integrate_observer(ts=ts, light_est=light_values, u0 = initial_conditions_forger)
-dlmo_spm = spm_model.integrate_observer(ts=ts, light_est=light_values, u0 = initial_conditions_spm)
-dlmo_tpm = tpm_model.integrate_observer(ts=ts, light_est=light_values, u0 = initial_conditions_tpm)
+```
 
-sol = tpm_model.integrate_model(ts=ts, light_est=light_values, state=initial_conditions_tpm)
-acto = Actogram(ts, light_vals=light_values, opacity=1.0)
+Integrate the models using a explicit RK4 scheme
+
+``` python
+trajectory = model.integrate_model(ts=ts, light_est=light_values, state = initial_conditions_forger)
+trajectory_spm = spm_model.integrate_model(ts=ts, light_est=light_values, state = initial_conditions_spm)
+trajectory_tpm = tpm_model.integrate_model(ts=ts, light_est=light_values, state = initial_conditions_tpm)
+```
+
+Find the dlmos (Dim Light Melatonin Onset) a experimental measurement of
+circadian phase
+
+``` python
+dlmo = model.dlmos(trajectory)
+dlmo_spm = spm_model.dlmos(trajectory_spm)
+dlmo_tpm = tpm_model.dlmos(trajectory_tpm)
+```
+
+Now let’s make an actogram plot of the light schedule with the DLMOs
+shown for the simulated shiftworker
+
+``` python
+acto = Actogram(ts, light_vals=light_values, opacity=1.0, smooth=False)
 acto.plot_phasemarker(dlmo, color='blue', label= "DLMO Forger99")
-acto.plot_phasemarker(dlmo_spm, color='darkgreen', label = "DLMO SPM" )
+acto.plot_phasemarker(dlmo_spm, color='darkgreen', label = "DLMO SPM")
 acto.plot_phasemarker(dlmo_tpm, color='red', label = "DLMO TPM" )
 plt.title("Actogram for a Simulated Shift Worker")
 plt.tight_layout()
 plt.show()
 ```
 
-![](index_files/figure-commonmark/cell-2-output-1.png)
+![](index_files/figure-commonmark/cell-5-output-1.png)
