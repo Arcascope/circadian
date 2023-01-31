@@ -194,7 +194,7 @@ def main_acto():
         ic = np.array([0.70, phase_ic_guess(ts[0]), 0.0])
         spm2 = Hannay19({'tau': args.period})
         cbt_runs = spm2.integrate_observer(
-            ts, args.multiplier*steps, ic, observer=SinglePopModel.CBTObs)
+            ts, args.multiplier*steps, ic, observer=Hannay19.CBTObs)
         acto.plot_phasemarker(
             cbt_runs, error=np.ones(len(cbt_runs)), color='red')
         print(f"CBT mean: {np.mean(np.fmod(cbt_runs, 24.0))}")
