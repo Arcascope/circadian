@@ -119,7 +119,6 @@ def main_acto():
 
     args = parser.parse_args()
 
-
     def generated_sleep(ml_model_path, steps, hr):
         ml_model = jit.load(ml_model_path)
         data = torch.vstack((torch.tensor(steps), torch.tensor(hr)))
@@ -128,6 +127,7 @@ def main_acto():
             0).squeeze(0).detach().numpy()
         len_out = wake_predicted.shape[0]
         wake_predicted = np.hstack((wake_predicted, len(steps) - len_out))
+        print(wake_predicted)
         wake_predicted = np.where(wake_predicted > 0.50, 1.0, 0.0)
         return wake_predicted
     
@@ -141,16 +141,18 @@ def main_acto():
         if args.t1 or args.t2:
             t1 = args.t1 or 0
             t2 = args.t2 or np.floor(np.squeeze(awObj.time_total)[-1]/24.0)+1
-            awObj.trim_data(t1*24.0, t2*24.0)
+            awObj.trim_by_hour(t1*24.0, t2*24.0, inplace=True)
         hr = awObj.heartrate
         ts = awObj.time_total
         steps = awObj.steps
 
         if args.sleepmodel:
-            awObj.wake = generated_sleep(
+            pred_sleep = generated_sleep(
                 ml_model_path=args.sleepmodel, 
                 steps=steps, 
                 hr=hr)
+            print(pred_sleep)
+            awObj._dataframe['wake'][0:len(pred_sleep)] = pred_sleep
 
     if args.raw:
         awObj.plot()
@@ -182,24 +184,24 @@ def main_acto():
 
     if args.dlmo:
         ic = np.array([0.70, phase_ic_guess(ts[0]), 0.0])
-        spm2 = Hannay19({'tau': args.period})
-        dlmo_runs = spm2.integrate_observer(ts, args.multiplier*steps, ic)
+        hmodel = Hannay19({'tau': args.period})
+        traj = hmodel(ts, args.multiplier*steps, ic)
+        dlmos = hmodel.dlmos(traj)
         acto.plot_phasemarker(
-            dlmo_runs, error=np.ones(len(dlmo_runs)), color='blue')
-        print(f"DLMO mean: {np.mean(np.fmod(dlmo_runs, 24.0))}")
+            dlmos, error=np.ones(len(dlmos)), color='blue')
+        print(f"DLMO mean: {np.mean(np.fmod(dlmos, 24.0))}")
         print("Last 14 days of DLMOs")
-        print(np.fmod(dlmo_runs[-14:], 24.0))
+        print(np.fmod(dlmos[-14:], 24.0))
 
     if args.cbt:
         ic = np.array([0.70, phase_ic_guess(ts[0]), 0.0])
-        spm2 = Hannay19({'tau': args.period})
-        cbt_runs = spm2.integrate_observer(
-            ts, args.multiplier*steps, ic, observer=Hannay19.CBTObs)
-        acto.plot_phasemarker(
-            cbt_runs, error=np.ones(len(cbt_runs)), color='red')
-        print(f"CBT mean: {np.mean(np.fmod(cbt_runs, 24.0))}")
+        hmodel = Hannay19({'tau': args.period})
+        traj = hmodel(ts, args.multiplier*steps, ic)
+        cbts = hmodel.cbt(traj)
+        acto.plot_phasemarker(cbts, error=np.ones(len(cbts)), color='red')
+        print(f"CBT mean: {np.mean(np.fmod(cbts, 24.0))}")
         print("Last 14 days of CBTs")
-        print(np.fmod(cbt_runs[-14:], 24.0))
+        print(np.fmod(cbts[-14:], 24.0))
 
 
     # if args.sleep:

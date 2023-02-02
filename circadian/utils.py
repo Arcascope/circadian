@@ -4,7 +4,8 @@
 __all__ = ['NpEncoder', 'simple_norm_stepshr_sleep_classifier', 'phase_ic_guess', 'abs_hour_diff', 'cut_phases_12',
            'convert_binary', 'cal_days_diff', 'interpolateLinear', 'interpolateLinearExt', 'parse_dt', 'circular_mean',
            'phase_coherence', 'phase_coherence_clock', 'angle_difference', 'subtract_clock_times', 'circular_av_clock',
-           'circular_scatter', 'times_to_angle', 'timezone_mapper', 'split_missing_data', 'split_drop_data']
+           'circular_scatter', 'times_to_angle', 'timezone_mapper', 'split_missing_data', 'split_drop_data',
+           'redact_dates']
 
 # %% ../nbs/07_utils.ipynb 3
 import numpy as np
@@ -44,7 +45,7 @@ def simple_norm_stepshr_sleep_classifier(t):
         t[1, torch.nonzero(t[1,:])] = torch.tanh((t[1,torch.nonzero(t[1,:])] - 60.0) / 30.0)
         return t 
 
-def phase_ic_guess(time_of_day: float):
+def phase_ic_guess(time_of_day: float) -> float:
     time_of_day = np.fmod(time_of_day, 24.0)
 
     # Wake at 8 am after 8 hours of sleep
@@ -316,3 +317,21 @@ def split_drop_data(date_time, ts, steps, hr, wake, break_threshold=96.0, min_le
                 [hr_split[i] for i in idx_long], [wake_split[i] for i in idx_long])
     else:
         return None
+
+# %% ../nbs/07_utils.ipynb 10
+def redact_dates(filepath: str ) -> None:
+    data = json.loads(open(filepath).read())
+    
+    first_time = data['steps'][0]['start']
+    for i in range(len(data['steps'])):
+        data['steps'][i]['start'] -= first_time
+        data['steps'][i]['end'] -= first_time 
+    for i in range(len(data['heartrate'])):
+        data['heartrate'][i]['timestamp'] -= first_time
+    for i in range(len(data['wake'])):
+        data['wake'][i]['start'] -= first_time
+        data['wake'][i]['end'] -= first_time
+        
+    json.dump(data, open("cleaned_data.json", 'w'))
+    
+    

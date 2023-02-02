@@ -21,7 +21,7 @@ import os
 from .utils import *
 import random
 import difflib
-
+import glob 
 import os
 from scipy.ndimage import gaussian_filter1d
 from os import read
@@ -391,23 +391,24 @@ def plot_hr_steps(self: WearableData,
 
 
 # %% ../nbs/02_readers.ipynb 16
-def combine_wearable_streams(steps: pd.DataFrame, # dataframe with columns 'start', 'end', 'steps'
-                                heartrate: pd.DataFrame, # dataframe with columns 'timestamp', 'heartrate'
-                                wake: pd.DataFrame, # dataframe with columns 'start', 'end', 'wake'
-                                bin_minutes: int = 6, # bin size in minutes for the resampled combined data
-                                subject_id: str="unknown-subject",
-                                data_id: str ="Exporter",
-                                sleep_trim: bool = False, # drop any entries without a sleep-wake entry
-                                inner_join: bool = False # if true, only keep entries that have both heartrate and sleep data
-                                ) -> WearableData:
-    
+def combine_wearable_streams(steps: pd.DataFrame,  # dataframe with columns 'start', 'end', 'steps'
+                             heartrate: pd.DataFrame,  # dataframe with columns 'timestamp', 'heartrate'
+                             wake: pd.DataFrame,  # dataframe with columns 'start', 'end', 'wake'
+                             bin_minutes: int = 6,  # bin size in minutes for the resampled combined data
+                             subject_id: str = "unknown-subject",
+                             data_id: str = "Exporter",
+                             sleep_trim: bool = False,  # drop any entries without a sleep-wake entry
+                             # if true, only keep entries that have both heartrate and sleep data
+                             inner_join: bool = False
+                             ) -> WearableData:
+
     # Convert unix times to datetime
     steps['start'] = pd.to_datetime(steps.start, unit='s')
     steps['end'] = pd.to_datetime(steps.end, unit='s')
     wake['start'] = pd.to_datetime(wake.start, unit='s')
     wake['end'] = pd.to_datetime(wake.end, unit='s')
     heartrate['timestamp'] = pd.to_datetime(heartrate.timestamp, unit='s')
-    
+
     # Resample the steps to the desired bin size
     s1 = steps.loc[:, ['start', 'steps']]
     s2 = steps.loc[:, ['end', 'steps']]
@@ -416,9 +417,9 @@ def combine_wearable_streams(steps: pd.DataFrame, # dataframe with columns 'star
     steps = pd.concat([s1, s2])
     steps.set_index('timestamp', inplace=True)
     steps = steps.resample(str(int(bin_minutes)) +
-                            'Min').agg({'steps': 'sum'})
+                           'Min').agg({'steps': 'sum'})
     steps.reset_index(inplace=True)
-    
+
     # Resample the heartrate data to the desired bin size
     heartrate.set_index('timestamp', inplace=True)
     heartrate = heartrate.resample(
@@ -428,7 +429,7 @@ def combine_wearable_streams(steps: pd.DataFrame, # dataframe with columns 'star
     # Merge the steps and heartrate data and fill missing heartrate with zeros
     merge_method = 'inner' if inner_join else 'left'
     df = pd.merge(steps, heartrate, on='timestamp', how=merge_method)
-    
+
     # Resample the wake data to the desired bin size
     s1 = wake.loc[:, ['start', 'wake']]
     s2 = wake.loc[:, ['end', 'wake']]
@@ -437,72 +438,95 @@ def combine_wearable_streams(steps: pd.DataFrame, # dataframe with columns 'star
     wake = pd.concat([s1, s2])
     wake.set_index('timestamp', inplace=True)
     wake = wake.resample(str(int(bin_minutes)) +
-                            'Min').agg({'wake': 'max'})
+                         'Min').agg({'wake': 'max'})
     wake.reset_index(inplace=True)
-    
+
     merge_method = 'inner' if inner_join else 'left'
     df = pd.merge(df, wake, on='timestamp', how=merge_method)
-    
-    df['datetime'] = df['timestamp'] 
-    
+
+    df['datetime'] = df['timestamp']
+
     # Make the timestamp column actually be a unix timestamp
     df['timestamp'] = (
         df['datetime'] - pd.Timestamp("1970-01-01")) // pd.Timedelta('1s')
-    
+
     time_start = WearableData.utc_to_hrs(df.datetime.iloc[0])
     df['time_total'] = time_start + (df.timestamp-df.timestamp.iloc[0])/3600.0
-    
+
     if sleep_trim:
         df.dropna(subset=['wake'], inplace=True)
-    
+
     aw = WearableData(_dataframe=df,
-                    subject_id=subject_id,
-                    data_id=data_id
-                    )
+                      subject_id=subject_id,
+                      data_id=data_id
+                      )
 
     return aw
-    
 
-def read_standard_csv(directory_path: str, # path to the directory containing the csv files
-                        bin_minutes: int = 6,
-                        subject_id="unknown-subject",
-                        data_id="Exporter",
-                        sleep_trim: bool = False, # drop any entries without a sleep-wake entry
-                        inner_join: bool = False # if true, only keep entries that have both heartrate and sleep data
-                        ) -> WearableData:
 
-    steps = pd.read_csv(directory_path+"/steps.csv", columns=['start', 'end', 'steps'])
-    heartrate = pd.read_csv(directory_path+"/heartrate.csv", columns=['timestamp', 'heartrate'])
-    wake = pd.read_csv(directory_path+"/sleep.csv", columns=['start', 'end', 'wake'])
-    
+def read_standard_csv(path: str,  # path to the directory containing the csv files
+                      glob_str: str = "*.csv",  # glob to use to find the csv files
+                      keyword: str = '', #entra filter to apply to the files for example a subject-id 
+                      bin_minutes: int = 6,
+                      subject_id="unknown-subject",
+                      data_id="Exporter",
+                      sleep_trim: bool = False,  # drop any entries without a sleep-wake entry
+                      # if true, only keep entries that have both heartrate and sleep data
+                      inner_join: bool = False
+                      ) -> WearableData:
+    candidate_files = list(filter(lambda x: keyword in x, glob.glob(path+"/"+glob_str)))
+    steps_filelist = list(filter(lambda x: "steps" in x, candidate_files))
+    heartrate_filelist = list(filter(lambda x: ("heartrate" in x) or ('hr' in x), candidate_files))
+    sleep_filelist = list(filter(lambda x: "sleep" in x or 'wake' in x, candidate_files))
+    if len(steps_filelist) > 0:
+        print(f"Reading the steps file {steps_filelist[0]}")
+        steps = pd.read_csv(steps_filelist[0], names=[
+                            'start', 'end', 'steps'])
+    if len(heartrate_filelist) > 0:
+        print(f"Reading the heartrate file {heartrate_filelist[0]}")
+        heartrate = pd.read_csv(heartrate_filelist[0], names=[
+                                'timestamp', 'heartrate'])
+    else:
+        heartrate = pd.DataFrame(columns=['timestamp', 'heartrate'])
+    if len(sleep_filelist) > 0:
+        print(f"Reading the sleep file {sleep_filelist[0]}")
+        wake = pd.read_csv(sleep_filelist[0], names=['start', 'end', 'wake'])
+    else:
+        wake = pd.DataFrame(columns=['start', 'end', 'wake'], dtype=float)
+
+    if steps is None:
+        raise ValueError("No steps file found, need to at least have that file")
+
     return combine_wearable_streams(steps, heartrate, wake, bin_minutes, subject_id, data_id, sleep_trim, inner_join)
 
-        
 
-def read_standard_json( filepath: str, # path to json file
-                        bin_minutes: int = 6, # data will be binned to this resolution in minutes
-                        subject_id: str ="unknown-subject", #subject id to be used
-                        data_id: str = "Exporter", # name of the data source
-                        gzip_opt: bool = False, # set to true if the file is gzipped, will be autodetected if extension is .gz
-                        sleep_trim: bool = False, # drop any entries without a sleep-wake entry
-                        inner_join: bool = False # if true, only keep entries that have both heartrate and sleep data
-                        ) -> WearableData:
+
+# %% ../nbs/02_readers.ipynb 17
+def read_standard_json(filepath: str,  # path to json file
+                       bin_minutes: int = 6,  # data will be binned to this resolution in minutes
+                       subject_id: str = "unknown-subject",  # subject id to be used
+                       data_id: str = "Exporter",  # name of the data source
+                       # set to true if the file is gzipped, will be autodetected if extension is .gz
+                       gzip_opt: bool = False,
+                       sleep_trim: bool = False,  # drop any entries without a sleep-wake entry
+                       # if true, only keep entries that have both heartrate and sleep data
+                       inner_join: bool = False
+                       ) -> WearableData:
     gzip_opt = gzip_opt if gzip_opt else filepath.endswith(".gz")
     fileobj = gzip.open(filepath, 'r') if gzip_opt else open(filepath, 'r')
     rawJson = json.load(fileobj)
     validate(rawJson, wearable_schema)
-    
+
     steps = pd.DataFrame(rawJson['steps'], columns=["start", "end", "steps"])
     # These could be empty
-    wake = pd.DataFrame(rawJson['wake'], columns=["start", "end", "wake"]) 
-    heartrate = pd.DataFrame(rawJson['heartrate'], columns=["timestamp", "heartrate"])
-    
+    wake = pd.DataFrame(rawJson['wake'], columns=["start", "end", "wake"])
+    heartrate = pd.DataFrame(rawJson['heartrate'], columns=[
+                             "timestamp", "heartrate"])
+
     return combine_wearable_streams(steps, heartrate, wake, bin_minutes, subject_id, data_id, sleep_trim, inner_join)
-        
-        
 
 
-# %% ../nbs/02_readers.ipynb 17
+# %% ../nbs/02_readers.ipynb 18
 @patch 
 def fillna(self: WearableData, 
              column_name: str = "heartrate", # column to fill in the dataframe
@@ -518,7 +542,7 @@ def fillna(self: WearableData,
         df[column_name] = filled_column 
         return self._copy_with_metadata(df)
 
-# %% ../nbs/02_readers.ipynb 33
+# %% ../nbs/02_readers.ipynb 34
 @patch 
 def plot_light_activity(self: WearableData, 
                         show=True, 
@@ -562,7 +586,7 @@ def plot_light_activity(self: WearableData,
             return ax
 
 
-# %% ../nbs/02_readers.ipynb 35
+# %% ../nbs/02_readers.ipynb 36
 def read_actiwatch(filepath: str, # path to actiwatch csv file
                         MIN_LIGHT_THRESHOLD=5000, # used to trim off empty data at the beginning and end of the file, must reach this amount of light to be included. Turn this off can setting this to 0 or negative
                         round_data=True, # round the data to the nearest bin_minutes
