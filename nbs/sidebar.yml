@@ -10,3 +10,11 @@ website:
       - 05_sleep.ipynb
       - 07_utils.ipynb
       - 08_cli.ipynb
+      - section: blog
+        contents:
+          - blog/index.qmd
+          - section: posts
+            contents:
+              - section: 2023-2-1-Intro
+                contents:
+                  - blog/posts/2023-2-1-Intro/index.qmd

@@ -397,7 +397,7 @@ class Hannay19TP(CircadianModel):
         for key, value in param_dict.items():
             setattr(self, key, value)
             
-    def get_parameters_array(self):
+    def get_parameters_array(self) -> np.ndarray: # Parameters as a numpy array
         """
             Return a numpy array of the models current parameters
         """
@@ -429,7 +429,7 @@ class Hannay19TP(CircadianModel):
 
     def alpha0(self, 
                light: float # light intensity in lux
-               ) -> float:
+               ) -> float: # Processed light intensity measure
         """A helper function for modeling the light input processing"""
         return (self.alpha_0 * pow(light, self.p) /
                 (pow(light, self.p) + self.I0))
@@ -488,7 +488,7 @@ class Hannay19TP(CircadianModel):
         return(state[2])
     
     @staticmethod
-    def phase_difference(state):
+    def phase_difference(state) -> float: # Phase difference between the two oscillators
         return state[2] - state[3]
     
     @property
@@ -638,4 +638,7 @@ class Hannay19(CircadianModel):
         Gives some default initial conditions for the model
         """
         return np.array([0.70,0.0,0.0])
+    
+    def guess_ic(self, time_of_day: float) -> np.ndarray:
+        return np.array([0.70, phase_ic_guess(time_of_day=time_of_day), 0.0])
 

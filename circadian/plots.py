@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['Actogram', 'plot_mae', 'plot_torus', 'Stroboscopic']
 
-# %% ../nbs/03_plots.ipynb 3
+# %% ../nbs/03_plots.ipynb 4
 from scipy.ndimage import gaussian_filter1d
 from copy import deepcopy
 import pylab as plt
@@ -15,7 +15,7 @@ from .models import Hannay19
 from .lights import *
 
 
-# %% ../nbs/03_plots.ipynb 5
+# %% ../nbs/03_plots.ipynb 6
 class Actogram:
     """ 
         Create an Actogram visualisation of the data
@@ -234,7 +234,7 @@ class Actogram:
 
 
 
-# %% ../nbs/03_plots.ipynb 7
+# %% ../nbs/03_plots.ipynb 8
 def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
              dlmo_pred: np.ndarray,  # predicted to be in hours
              norm_to: float = None, 
@@ -274,7 +274,7 @@ def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
 
 
 
-# %% ../nbs/03_plots.ipynb 9
+# %% ../nbs/03_plots.ipynb 10
 def plot_torus(phase1: np.ndarray, # array of phases  
                phase2: np.ndarray, #array of phases, assumed to be the same length as phase1
                scaled_by: float = None, # should the phases be wrapped, this just applies an fmod to the phases
@@ -299,7 +299,7 @@ def plot_torus(phase1: np.ndarray, # array of phases
     return ax
 
 
-# %% ../nbs/03_plots.ipynb 13
+# %% ../nbs/03_plots.ipynb 14
 class Stroboscopic:
     """
     This class can be used to make a stroboscopic plot of the entrainment of an oscillator to a sudden shift in schedule
