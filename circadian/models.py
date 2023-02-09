@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['DynamicalTrajectory', 'CircadianModel', 'Forger99Model', 'Hannay19TP', 'Hannay19']
 
-# %% ../nbs/00_models.ipynb 3
+# %% ../nbs/00_models.ipynb 4
 import scipy as sp
 from abc import ABC, abstractmethod
 import numpy as np
@@ -17,11 +17,15 @@ from pathlib import Path
 import sys
 from numba import jit, njit, prange
 from typing import List, Tuple, Dict, Union, Optional, Callable
+import time
+from functools import wraps
 
 
-
-# %% ../nbs/00_models.ipynb 7
+# %% ../nbs/00_models.ipynb 8
 class DynamicalTrajectory:
+    """ 
+    A class to store a solutions that contains both the time points and the states.
+    """
     
     def __init__(self, 
                  ts: np.ndarray, # time points
@@ -30,7 +34,11 @@ class DynamicalTrajectory:
         self.ts = ts
         self.states = states
         
-    def __call__(self, t: float) -> np.ndarray:
+        
+    def __call__(self, t: float) -> np.ndarray: # state of the system
+        """ 
+        Return the state at time t, linearly interpolated
+        """
         return np.interp(t, self.ts, self.states)
     
     def __getitem__(self, idx: int) -> Tuple[float, np.ndarray]:
@@ -54,7 +62,7 @@ class DynamicalTrajectory:
     
     
 
-# %% ../nbs/00_models.ipynb 8
+# %% ../nbs/00_models.ipynb 11
 class CircadianModel(ABC):
     """ Abstract base class for circadian models, defines the interface for all models """
 
@@ -77,6 +85,16 @@ class CircadianModel(ABC):
             Returns the parameters for the model
         """
         pass
+    
+    def set_parameters(self, 
+                       param_dict: dict # dictionary of parameters for the model)
+    ) -> None:
+        """
+            Sets the parameters for the model
+        """
+
+        for key, value in param_dict.items():
+            setattr(self, key, value)
 
     def step_rk4(self,
                  state: np.ndarray, #dy/dt = f(y, t)
@@ -183,7 +201,7 @@ class CircadianModel(ABC):
         return ic
 
 
-# %% ../nbs/00_models.ipynb 23
+# %% ../nbs/00_models.ipynb 26
 class Forger99Model(CircadianModel):
     """ Implementation of the Forger 1999 model """
 
@@ -196,7 +214,6 @@ class Forger99Model(CircadianModel):
         This class can be used to simulate and plot the results of the given light schedule on the circadian phase
         and amplitude.
         """
-
         # Set the parameters to the published values by default
         self._default_params()
         
@@ -334,7 +351,7 @@ class Forger99Model(CircadianModel):
         return "Forger99Model"
         
 
-# %% ../nbs/00_models.ipynb 38
+# %% ../nbs/00_models.ipynb 41
 class Hannay19TP(CircadianModel):
     """  The Hannay et al 2019 two population model, which models the ventral and dorsal SCN populations """
 
@@ -499,7 +516,7 @@ class Hannay19TP(CircadianModel):
 
 
 
-# %% ../nbs/00_models.ipynb 41
+# %% ../nbs/00_models.ipynb 44
 class Hannay19(CircadianModel):
     """
         A simple python program to integrate the human circadian rhythms model 

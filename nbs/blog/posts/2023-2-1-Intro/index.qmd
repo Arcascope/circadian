@@ -4,6 +4,7 @@ format:
   html:
     code-fold: true
 jupyter: python3
+image: "images/actogram.png"
 ---
 
 # Introduction 

@@ -15,7 +15,7 @@ from .models import Hannay19
 from .lights import *
 
 
-# %% ../nbs/03_plots.ipynb 6
+# %% ../nbs/03_plots.ipynb 7
 class Actogram:
     """ 
         Create an Actogram visualisation of the data
@@ -195,8 +195,14 @@ class Actogram:
                 self.ax.fill_betweenx(
                     yvals_split[idx], xx-error_split[idx]+24.0, xx+error_split[idx]+24.0, alpha=alpha_error, *args, **kwargs)
 
-    def plot_phasetimes(self, times: np.ndarray, phases: np.ndarray, error: np.ndarray = None,
-                        alpha_error=0.30, alpha=1.0, *args, **kwargs):
+    def plot_phasetimes(self, 
+                        times: np.ndarray, 
+                        phases: np.ndarray, 
+                        error: np.ndarray = None,
+                        alpha_error=0.30, 
+                        alpha=1.0, 
+                        *args, 
+                        **kwargs):
         """
             This method takes observations of the phase and times (same length arrays)
             and adds them to the actogram.    
@@ -234,7 +240,7 @@ class Actogram:
 
 
 
-# %% ../nbs/03_plots.ipynb 8
+# %% ../nbs/03_plots.ipynb 9
 def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
              dlmo_pred: np.ndarray,  # predicted to be in hours
              norm_to: float = None, 
@@ -274,7 +280,7 @@ def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
 
 
 
-# %% ../nbs/03_plots.ipynb 10
+# %% ../nbs/03_plots.ipynb 11
 def plot_torus(phase1: np.ndarray, # array of phases  
                phase2: np.ndarray, #array of phases, assumed to be the same length as phase1
                scaled_by: float = None, # should the phases be wrapped, this just applies an fmod to the phases
@@ -299,7 +305,7 @@ def plot_torus(phase1: np.ndarray, # array of phases
     return ax
 
 
-# %% ../nbs/03_plots.ipynb 14
+# %% ../nbs/03_plots.ipynb 15
 class Stroboscopic:
     """
     This class can be used to make a stroboscopic plot of the entrainment of an oscillator to a sudden shift in schedule
