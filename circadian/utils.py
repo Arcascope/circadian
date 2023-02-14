@@ -22,6 +22,7 @@ import scipy as sp
 from scipy.integrate import solve_ivp
 from math import *
 import pylab as plt
+import gzip
 
 
 # %% ../nbs/07_utils.ipynb 4
@@ -318,9 +319,14 @@ def split_drop_data(date_time, ts, steps, hr, wake, break_threshold=96.0, min_le
     else:
         return None
 
-# %% ../nbs/07_utils.ipynb 10
-def redact_dates(filepath: str ) -> None:
-    data = json.loads(open(filepath).read())
+# %% ../nbs/07_utils.ipynb 11
+def redact_dates(infile: str, # the input file in json format
+                 outfile: str, # the output file in json format with dates redacted, for user privacy
+                 gzip_opt: bool = False # if the input file is gzipped, if the extension is .gz, this is set to True
+                 ) -> None:
+    gzip_opt = gzip_opt if gzip_opt else infile.endswith(".gz")
+    fileobj = gzip.open(infile, 'r') if gzip_opt else open(infile, 'r')
+    data = json.load(fileobj)
     
     first_time = data['steps'][0]['start']
     for i in range(len(data['steps'])):
@@ -332,6 +338,6 @@ def redact_dates(filepath: str ) -> None:
         data['wake'][i]['start'] -= first_time
         data['wake'][i]['end'] -= first_time
         
-    json.dump(data, open("cleaned_data.json", 'w'))
+    json.dump(data, open(outfile, 'w'))
     
     
