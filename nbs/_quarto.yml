@@ -14,9 +14,6 @@ website:
   navbar:
     background: primary
     search: true
-    right:
-      - text: "Blog"
-        href: blog/index.qmd
   sidebar:
     style: floating
   
