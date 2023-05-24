@@ -660,7 +660,7 @@ class Hannay19(CircadianModel):
         return np.array([0.70, phase_ic_guess(time_of_day=time_of_day), 0.0])
 
 
-# %% ../nbs/00_models.ipynb 55
+# %% ../nbs/00_models.ipynb 56
 class Hilaire2007(CircadianModel):
     
     def __init__(self, params: dict = None):
@@ -797,7 +797,7 @@ class Hilaire2007(CircadianModel):
     
     
 
-# %% ../nbs/00_models.ipynb 59
+# %% ../nbs/00_models.ipynb 60
 class KronauerJewett(CircadianModel):
     """ 
         Higher order vdp model for the circadian clock 
