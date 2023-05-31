@@ -314,7 +314,7 @@ def ShiftWorkLight(lux: float=150.0, # lux intensity of the light
 
 # %% ../nbs/01_lights.ipynb 38
 @patch_to(Light)
-def SlamShift(lux: float = 150.0, # lux intensity of the light
+def SlamShift(lux: float=150.0, # lux intensity of the light
               shift: float=8.0, # number of hours to shift the light schedule
               before_days: int=10, #number of days before the shift occurs 
               after_days: int=10, # number of days after the shift occurs
@@ -358,10 +358,10 @@ def SlamShift(lux: float = 150.0, # lux intensity of the light
 
 # %% ../nbs/01_lights.ipynb 41
 @patch_to(Light)
-def SocialJetlag(lux: float = 150.0, # lux intensity of the light
-                 num_regular_days: int = 5, # number of days with a regular schedule
-                 num_jetlag_days: int = 2, # number of days with a delayed schedule
-                 hours_delayed: float = 2.0, # number of hours to delay the schedule on the jetlag days
+def SocialJetlag(lux: float=150.0, # lux intensity of the light
+                 num_regular_days: int=5, # number of days with a regular schedule
+                 num_jetlag_days: int=2, # number of days with a delayed schedule
+                 hours_delayed: float=2.0, # number of hours to delay the schedule on the jetlag days
                  regular_days_lights_on: float=7.0, # hour of the day for lights to come on
                  ) -> 'Light':
     "Create a light schedule that simulates the effects of jetlag"
@@ -398,7 +398,7 @@ def SocialJetlag(lux: float = 150.0, # lux intensity of the light
     return regular_days
 
 # %% ../nbs/01_lights.ipynb 44
-def make_pulse(t, tstart, tend, steep: float = 30.0):
+def make_pulse(t, tstart, tend, steep: float=30.0):
     return 0.5*np.tanh(steep*(t-tstart))-0.5*np.tanh(steep*(t-tend))
 
 def get_pulse(t: float,
