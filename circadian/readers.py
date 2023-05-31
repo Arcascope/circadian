@@ -598,7 +598,7 @@ def read_actiwatch(filepath: str, # path to actiwatch csv file
     df = pd.read_csv(filepath, names=['Date', 'Time', 'Activity', 'White Light', 'Sleep/Wake'], header=0) 
     df['datetime'] = df['Date']+" "+df['Time']
     if dt_format is None:
-        df['datetime'] = pd.to_datetime(df.datetime, infer_datetime_format=True)
+        df['datetime'] = pd.to_datetime(df.datetime)
     else:
         df['datetime'] = pd.to_datetime(df.datetime, format=dt_format)
 
