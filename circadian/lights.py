@@ -284,9 +284,9 @@ def RegularLight(lux: float=150.0, # lux intensity of the light
 
 # %% ../nbs/01_lights.ipynb 35
 @patch_to(Light)
-def ShiftWorkLight(lux: float = 150.0, # lux intensity of the light
-                   dayson: int = 3, # number of days on the night shift
-                   daysoff: int = 2 # number of days off shift
+def ShiftWorkLight(lux: float=150.0, # lux intensity of the light
+                   days_on: int=3, # number of days on the night shift
+                   days_off: int=2 # number of days off shift
                    ) -> 'Light':
     "Create a light schedule for a shift worker" 
     # type checking
@@ -294,20 +294,20 @@ def ShiftWorkLight(lux: float = 150.0, # lux intensity of the light
         raise ValueError(f"lux must be a nonnegative float or int, got {type(lux)}")
     elif lux < 0.0:
         raise ValueError(f"lux must be a nonnegative float or int, got {lux}")
-    if not isinstance(dayson, int):
-        raise ValueError(f"dayson must be a nonnegative int, got {type(dayson)}")
-    elif dayson < 0:
-        raise ValueError(f"dayson must be a nonnegative int, got {dayson}")
-    if not isinstance(daysoff, int):
-        raise ValueError(f"daysoff must be a nonnegative int, got {type(daysoff)}")
-    elif daysoff < 0:
-        raise ValueError(f"daysoff must be a nonnegative int, got {daysoff}")
-    if dayson == 0 and daysoff == 0:
-        raise ValueError("dayson and daysoff cannot both be 0")
+    if not isinstance(days_on, int):
+        raise ValueError(f"days_on must be a nonnegative int, got {type(days_on)}")
+    elif days_on < 0:
+        raise ValueError(f"days_on must be a nonnegative int, got {days_on}")
+    if not isinstance(days_off, int):
+        raise ValueError(f"days_off must be a nonnegative int, got {type(days_off)}")
+    elif days_off < 0:
+        raise ValueError(f"days_off must be a nonnegative int, got {days_off}")
+    if days_on == 0 and days_off == 0:
+        raise ValueError("days_on and days_off cannot both be 0")
     
     workday = Light.RegularLight(lux=lux, lights_on=19.0, lights_off=11.0)
     offday = Light.RegularLight(lux=lux, lights_on=7.0, lights_off=23.0)
-    total_schedule = [workday for _ in range(dayson-1)] + [offday for _ in range(daysoff)]
+    total_schedule = [workday for _ in range(days_on-1)] + [offday for _ in range(days_off)]
     for day in total_schedule:
         workday = workday.concatenate(day)
     return workday
@@ -388,9 +388,9 @@ def SocialJetlag(lux: float = 150.0, # lux intensity of the light
         raise ValueError(f"regular_days_lights_on must be a nonnegative float or int, got {regular_days_lights_on}")
 
     jetlag_day_lights_on = (regular_days_lights_on + hours_delayed) 
-    jetlag_day_lights_off = (regular_days_lights_on+ 16.0 + hours_delayed) 
+    jetlag_day_lights_off = (regular_days_lights_on + 16.0 + hours_delayed) 
     regular_days = Light.RegularLight(lux=lux, lights_on=regular_days_lights_on, lights_off=regular_days_lights_on+16.0)
-    jetlag_day = Light.RegularLight(lux=lux, lights_on=jetlag_day_lights_on, lights_off=jetlag_day_lights_on + 16.0)
+    jetlag_day = Light.RegularLight(lux=lux, lights_on=jetlag_day_lights_on, lights_off=jetlag_day_lights_on+16.0)
     total_schedule = [regular_days for _ in range(num_regular_days-1)] + [jetlag_day for _ in range(num_jetlag_days)]
     for day in total_schedule:
         regular_days = regular_days.concatenate(day)

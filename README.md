@@ -24,8 +24,8 @@ import numpy as np
 days_night = 3
 days_day = 2
 slam_shift = Light.ShiftWorkLight(lux = 300.0, 
-                                  dayson=days_night, 
-                                  daysoff=days_day)
+                                  days_on=days_night, 
+                                  days_off=days_day)
 ts = np.arange(0, 24*30,0.10)
 light_values = slam_shift(ts, repeat_period=24*(days_night+days_day))
 
