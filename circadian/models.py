@@ -3,25 +3,17 @@
 # %% auto 0
 __all__ = ['DynamicalTrajectory', 'CircadianModel', 'Forger99Model', 'Hannay19TP', 'Hannay19', 'Hilaire2007', 'KronauerJewett']
 
-# %% ../nbs/00_models.ipynb 4
-import scipy as sp
-from abc import ABC, abstractmethod
+# %% ../nbs/00_models.ipynb 3
+import time
 import numpy as np
+import pylab as plt
+from functools import wraps
+from abc import ABC, abstractmethod
 from scipy.signal import find_peaks
 from .utils import phase_ic_guess
+from typing import Tuple
 
-from ctypes import c_void_p, c_double, c_int, cdll
-import scipy as sp
-import pylab as plt
-from pathlib import Path
-import sys
-from numba import jit, njit, prange
-from typing import List, Tuple, Dict, Union, Optional, Callable
-import time
-from functools import wraps
-
-
-# %% ../nbs/00_models.ipynb 8
+# %% ../nbs/00_models.ipynb 7
 class DynamicalTrajectory:
     """ 
     A class to store a solutions that contains both the time points and the states.
@@ -33,7 +25,6 @@ class DynamicalTrajectory:
                  ) -> None:
         self.ts = ts
         self.states = states
-        
         
     def __call__(self, t: float) -> np.ndarray: # state of the system
         """ 
@@ -59,10 +50,8 @@ class DynamicalTrajectory:
             return self.states.shape[0]
         else:
             return 1
-    
-    
 
-# %% ../nbs/00_models.ipynb 11
+# %% ../nbs/00_models.ipynb 10
 class CircadianModel(ABC):
     """ Abstract base class for circadian models, defines the interface for all models """
 
@@ -201,7 +190,7 @@ class CircadianModel(ABC):
         return ic
 
 
-# %% ../nbs/00_models.ipynb 26
+# %% ../nbs/00_models.ipynb 25
 class Forger99Model(CircadianModel):
     """ Implementation of the Forger 1999 model """
 
@@ -349,9 +338,8 @@ class Forger99Model(CircadianModel):
     
     def __str__(self) -> str:
         return "Forger99Model"
-        
 
-# %% ../nbs/00_models.ipynb 41
+# %% ../nbs/00_models.ipynb 40
 class Hannay19TP(CircadianModel):
     """  The Hannay et al 2019 two population model, which models the ventral and dorsal SCN populations """
 
@@ -511,12 +499,8 @@ class Hannay19TP(CircadianModel):
     @property
     def default_initial_conditions(self) -> np.ndarray:
         return np.array([1.0,1.0,0.0,0.10,0.0])
-    
 
-
-
-
-# %% ../nbs/00_models.ipynb 44
+# %% ../nbs/00_models.ipynb 43
 class Hannay19(CircadianModel):
     """
         A simple python program to integrate the human circadian rhythms model 
@@ -660,7 +644,7 @@ class Hannay19(CircadianModel):
         return np.array([0.70, phase_ic_guess(time_of_day=time_of_day), 0.0])
 
 
-# %% ../nbs/00_models.ipynb 56
+# %% ../nbs/00_models.ipynb 55
 class Hilaire2007(CircadianModel):
     
     def __init__(self, params: dict = None):
@@ -793,11 +777,8 @@ class Hilaire2007(CircadianModel):
     
     def __str__(self) -> str:
         return "St. Hilaire 2007 NonPhotic Model"
-    
-    
-    
 
-# %% ../nbs/00_models.ipynb 60
+# %% ../nbs/00_models.ipynb 59
 class KronauerJewett(CircadianModel):
     """ 
         Higher order vdp model for the circadian clock 
