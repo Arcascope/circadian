@@ -6,6 +6,9 @@
 ![CI](https://github.com/Arcascope/circadian/actions/workflows/test.yaml/badge.svg)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/arcascope.svg?style=social&label=Follow%20%40arcascope)](https://twitter.com/arcascope)
 
+Welcome to `circadian`, a computational package for the simulation and
+analysis of circadian rhythms
+
 ## Install
 
 `circadian` can be installed via `pip`:
