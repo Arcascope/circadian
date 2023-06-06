@@ -31,17 +31,16 @@ See all the available models at
 [circadian/models.py](https://github.com/Arcascope/circadian/blob/main/circadian/models.py)
 
 Additionally, `circadian` provides a set of tools for simulating and
-analzying circadian rhythms: - Light schedules can be defined using the
-[`Light`](https://khannay.github.io/circadian/lights.html#light) class
-and fed directly into the models - Phase response curves can be
-calculated using the
-[`PRCFinder`](https://khannay.github.io/circadian/prc.html#prcfinder)
-class - Actograms and phase plots can be generated using the
-`circadian.plots` module
+analzying circadian rhythms: - Define light schedules using the
+[`Light`](https://arcascope.github.io/circadian/lights.html#light) class
+and feed directly into the models - Calculate phase response curves
+using the
+[`PRCFinder`](https://arcascope.github.io/circadian/prc.html#prcfinder)
+class - Generate actograms and phase plots with the `circadian.plots`
+module
 
-Finally, the package streamlines the process of working with data from
-wereable devices. The `circadian.readers` module provides a set of
-functions for reading, processing, and analyzing wereable data.
+Finally, the package streamlines the process of reading, processing, and
+analyzing wereable data via the `circadian.readers` module.
 
 Check out the [documentation](https://arcascope.github.io/circadian/)
 for a full overview of the package and its features.
@@ -98,7 +97,8 @@ dlmo_tpm = tpm_model.dlmos(trajectory_tpm)
 ```
 
 Lastly, the results of the simulation–DLMOs included– are visualized in
-an [`Actogram`](https://khannay.github.io/circadian/plots.html#actogram)
+an
+[`Actogram`](https://arcascope.github.io/circadian/plots.html#actogram)
 plot from the `circadian.plots` module
 
 ``` python
