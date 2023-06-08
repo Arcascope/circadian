@@ -4,9 +4,10 @@
 __all__ = ['Light', 'make_pulse', 'get_pulse']
 
 # %% ../nbs/01_lights.ipynb 3
+import warnings
 import numpy as np
 import pylab as plt
-from typing import Optional
+from typing import Callable
 from matplotlib.pyplot import step
 from fastcore.basics import patch_to
 from numpy.core.fromnumeric import repeat
@@ -15,29 +16,11 @@ from numpy.core.fromnumeric import repeat
 class Light:
     "Helper class for creating light schedules"
     def __init__(self, 
-                 light: callable, # light function that takes in a time value and returns a float, if a float is passed, then the light function is a constant set to that lux value 
+                 light: Callable, # light function that takes in a time value and returns a float, if a float is passed, then the light function is a constant set to that lux value 
                  start_time: float=0.0, # when the light function starts in hours
-                 duration: float=1.0, # duration of the light function in hours
-                 default_value: float=0.0 # the default value of the light function outside of its duration
+                 duration: float=1.0, # duration of the light function in hours. Must be positive
+                 default_value: float=0.0, # the default value of the light function outside of its duration. Must be nonnegative
                  ):
-        # light type checking
-        light_input_err_msg = "`light` should be a nonnegative `float`, or a callable with a single `float` parameter which returns a nonnegative `float`"
-        if callable(light):
-            light_fn = np.vectorize(light, otypes=[float])
-            output = light_fn(0.0)
-            try:
-                float(output)
-            except:
-                # catches when the function created from light does not return values that can be cast to float
-                raise ValueError(light_input_err_msg)
-        else:
-            try:
-                light = float(light)
-                light_fn = np.vectorize(lambda t: light, otypes=[float])
-            except:
-                # catches when the light function can't be converted to a float
-                raise ValueError(light_input_err_msg)
-
         # start_time type checking
         start_time_err_msg = "`start_time` should be a `float`"
         try:
@@ -46,17 +29,17 @@ class Light:
             # catches when start_time can't be converted to a float
             raise ValueError(start_time_err_msg)
 
-        # duration type checking
-        duration_err_msg = "`duration` should be a nonnegative `float`"
+        # duration type and value checking
+        duration_err_msg = "`duration` should be a positive `float`"
         try:
             duration = float(duration)
-            if duration < 0:
+            if duration <= 0:
                 raise ValueError(duration_err_msg)
         except:
             # catches when duration can't be converted to a float
             raise ValueError(duration_err_msg)
 
-        # default_value type checking
+        # default_value type and value checking
         default_value_err_msg = "`default_value` should be a nonnegative `float`"
         try:
             default_value = float(default_value)
@@ -65,6 +48,36 @@ class Light:
         except: 
             # catches when default_value can't be converted to a float
             raise ValueError(default_value_err_msg)
+
+        # light type checking 
+        light_input_err_msg = "`light` should be a nonnegative `float`, or a callable with a single `float` parameter which returns a nonnegative `float`"
+        if not callable(light):
+            try:
+                light = float(light)
+            except:
+                # catches when the provided light value can't be converted to a float
+                raise ValueError(light_input_err_msg)
+
+        # create light function
+        def light_fn(t):
+            default_zone = (t < start_time) | (t > start_time + duration)
+            light_zone = (t >= start_time) & (t <= start_time + duration)
+            conditions = [default_zone, light_zone]
+            if callable(light):
+                values = [default_value, light(t)]
+            else:
+                values = [default_value, light]
+            return np.piecewise(t, conditions, values)
+
+        light_fn = np.vectorize(light_fn, otypes=[float])
+
+        # check that the light function returns values that can be cast to float
+        test_output = light_fn(start_time + duration/2.0)
+        try:
+            float(test_output)
+        except:
+            # catches when the function created from light does not return values that can be cast to float
+            raise ValueError(light_input_err_msg)
 
         # check that the light function returns nonnegative values
         if np.any(light_fn(np.linspace(start_time, start_time + duration, 100)) < 0):
@@ -86,7 +99,7 @@ def end_time(self: Light):
 @patch_to(Light)
 def __call__(self, 
              t: np.ndarray, # time values in hours to evaluate the light function
-             repeat_period: float = None # should the light function repeat after a certain period in hours
+             repeat_period: float=None, # if not None, the light function will repeat every `repeat_period` hours
              ):
     # t type checking
     t_err_msg = "`t` should be a `float` or a 1d `numpy.ndarray` of `float`"
@@ -97,34 +110,31 @@ def __call__(self,
                 t = float(t)
                 t = np.array([t])
             except:
+                # catches when t can't be converted to a float
                 raise ValueError(t_err_msg)
         elif t.ndim != 1:
+            # catches when t is not a 1d array
             raise ValueError(t_err_msg)
     except:
         raise ValueError(t_err_msg)
-    # repeat_period type checking
-    repeat_period_err_msg = "`repeat_period` should be a nonnegative `float`"
+
+    # repeat_period type and value checking
+    repeat_period_err_msg = "`repeat_period` should be a positive `float`"
     if repeat_period is not None:
         try:
             repeat_period = float(repeat_period)
-            if repeat_period < 0:
+            if repeat_period <= 0:
                 raise ValueError(repeat_period_err_msg)
         except:
+            # catches when repeat_period can't be converted to a float
             raise ValueError(repeat_period_err_msg)
-    
+
     if repeat_period is not None:
         t = np.mod(t, repeat_period)
-    default_result = np.zeros_like(t)
-    if self.duration == 0.0:
-        return default_result + self.default_value
-    else:
-        mask = (t >= self.start_time) & (t <= self.end_time)
-        default_result[~mask] = self.default_value
-        func_result  = self._func(t[mask])
-        default_result[mask] += func_result
-        return default_result
+    
+    return self._func(t)
 
-# %% ../nbs/01_lights.ipynb 22
+# %% ../nbs/01_lights.ipynb 12
 @patch_to(Light)
 def __add__(self, 
             light_obj: 'Light' # another light object to be added to the current light object
@@ -132,81 +142,30 @@ def __add__(self,
     start_times = [self.start_time, light_obj.start_time]
     end_times = [self.end_time, light_obj.end_time]
     default_values = [self.default_value, light_obj.default_value]
-    light_functions = [self._func, light_obj._func]
+
+    # catch the edge case when light functions only overlap for a single point
+    is_overlap_a_point = max(start_times) == min(end_times)
+    if is_overlap_a_point:
+        overlap_value = self._func(max(start_times))
 
     new_start_time = min(start_times)
     new_duration = max(end_times) - new_start_time
     new_default_value = sum(default_values)
 
-    if self.duration == 0.0 and light_obj.duration != 0.0:
-        new_start_time = light_obj.start_time
-        new_duration = light_obj.duration
-        def new_light_func(t):
-            overlap_with_default = (t >= new_start_time) & (t <= new_start_time + new_duration)
-            conditions = [overlap_with_default]
-            values = [light_obj._func(t) + self.default_value]
-            return np.piecewise(t, conditions, values)
-
-    elif light_obj.duration == 0.0 and self.duration != 0.0:
-        new_start_time = self.start_time
-        new_duration = self.duration
-        def new_light_func(t):
-            overlap_with_default = (t >= new_start_time) & (t <= new_start_time + new_duration)
-            conditions = [overlap_with_default]
-            values = [self._func(t) + light_obj.default_value]
-            return np.piecewise(t, conditions, values)
-
-    elif light_obj.duration == 0.0 and self.duration == 0.0:
-        new_start_time = 0.0
-        new_duration = 0.0
-        def new_light_func(t):
-            return new_default_value
-
-    else:
-        if min(end_times) - max(start_times) <= 0:
-            # light functions do not overlap
-            def new_light_func(t):
-                first_portion = (t >= min(start_times)) & (t <= min(end_times))
-                default_zone = (t > min(end_times)) & (t < max(start_times))
-                second_portion = (t >= max(start_times)) & (t <= max(end_times))
-                conditions =  [first_portion, 
-                            default_zone, 
-                            second_portion]
-                values = [light_functions[np.argmin(start_times)](t) + default_values[np.argmax(start_times)],
-                        new_default_value, 
-                        light_functions[np.argmax(start_times)](t) + default_values[np.argmin(start_times)]]
-
-                return np.piecewise(t, conditions, values)
+    def new_light_fn(t):
+        fn_1 = self._func(t)
+        fn_2 = light_obj._func(t)
+        if is_overlap_a_point:
+            if t == max(start_times):
+                return overlap_value
+            else:
+                return fn_1 + fn_2
         else:
-            # light functions overlap
-            def new_light_func(t):
-                first_no_overlap = (t >= min(start_times)) & (t < max(start_times))
-                overlap = (t >= max(start_times)) & (t < min(end_times))
-                second_no_overlap = (t >= min(end_times)) & (t <= max(end_times))
-                conditions = [first_no_overlap, 
-                            overlap, 
-                            second_no_overlap]
-                values = [light_functions[np.argmin(start_times)](t) + default_values[np.argmax(start_times)],
-                        light_functions[0](t) + light_functions[1](t),
-                        light_functions[np.argmax(start_times)](t) + default_values[np.argmin(start_times)]]
+            return fn_1 + fn_2
 
-                return np.piecewise(t, conditions, values)
+    return Light(new_light_fn, start_time=new_start_time, duration=new_duration, default_value=new_default_value)
 
-    return Light(new_light_func, start_time=new_start_time, duration=new_duration, default_value=new_default_value)
-
-# %% ../nbs/01_lights.ipynb 25
-@patch_to(Light)
-def concatenate(self, light_obj: 'Light'):
-    "Concatenate two light functions in time"
-    switch_time = self.end_time
-    def light_func_new(t): return np.piecewise(t, [t <= switch_time, t >= switch_time],                                       [
-        self._func, lambda t: light_obj._func(t-switch_time)])
-
-    start_time_new = min(self.start_time, light_obj.start_time)
-    duration_new = light_obj.duration + self.duration
-    return Light(light_func_new, start_time=start_time_new, duration=duration_new)
-
-# %% ../nbs/01_lights.ipynb 26
+# %% ../nbs/01_lights.ipynb 14
 @patch_to(Light)
 def plot(self, 
          plot_start_time: float = None, # start time of the plot in hours
@@ -249,13 +208,13 @@ def plot(self,
     ax.plot(t, vals, *args, **kwargs)
     return ax
 
-# %% ../nbs/01_lights.ipynb 31
+# %% ../nbs/01_lights.ipynb 19
 @patch_to(Light)
 def RegularLight(lux: float=150.0, # lux intensity of the light
-                 lights_on: float=8.0, # hour of the day for lights to come on
-                 lights_off: float=16.0, # hour of the day for lights to go off
+                 lights_on: float=7.0, # hour of the day for lights to come on
+                 lights_off: float=23.0, # hour of the day for lights to go off
                  ) -> 'Light':
-    "Create a light function that is on from `lights_on` to `lights_off` on a 24 hour schedule"
+    "Create a light schedule with a `lux` value from `lights_on` to `lights_off` on a 24 hour schedule"
     # type checking
     if not isinstance(lux, (float, int)):
         raise ValueError(f"lux must be a nonnegative float or int, got {type(lux)}")
@@ -263,56 +222,110 @@ def RegularLight(lux: float=150.0, # lux intensity of the light
         raise ValueError(f"lux must be a nonnegative float or int, got {lux}")
     if not isinstance(lights_on, (float, int)):
         raise ValueError(f"lights_on must be a float or int, got {type(lights_on)}")
+    elif lights_on < 0.0 or lights_on > 24.0:
+        raise ValueError(f"lights_on must be between 0.0 and 24.0, got {lights_on}")
     if not isinstance(lights_off, (float, int)):
         raise ValueError(f"lights_off must be a float or int, got {type(lights_off)}")
-
+    elif lights_off < 0.0 or lights_off > 24.0:
+        raise ValueError(f"lights_off must be between 0.0 and 24.0, got {lights_off}")
+    
     lights_on = np.mod(lights_on, 24.0)
     lights_off = np.mod(lights_off, 24.0)
     if lights_off > lights_on:
-        end_time = lights_on + (lights_off - lights_on) 
-        dark_section_before = Light(0.0, start_time=0.0, duration=lights_on)
-        light_section = Light(lux, 
-                        start_time=lights_on, 
-                        duration=lights_off - lights_on)
-        dark_section = Light(0.0, end_time, duration=24.0 - end_time)
-        return dark_section_before.concatenate(light_section).concatenate(dark_section)
+        return Light(lux, start_time=lights_on, duration=lights_off - lights_on)
     else:
-        first_light = Light(lux, start_time = 0.0, duration=lights_off)
-        dark_section = Light(0.0, start_time=lights_off, duration=lights_on - lights_off)
+        first_light = Light(lux, start_time=0.0, duration=lights_off)
         second_light = Light(lux, start_time=lights_on, duration=24.0 - lights_on)
-        return  first_light.concatenate(dark_section).concatenate(second_light)
+        return first_light + second_light
 
-# %% ../nbs/01_lights.ipynb 35
+# %% ../nbs/01_lights.ipynb 21
 @patch_to(Light)
-def ShiftWorkLight(lux: float=150.0, # lux intensity of the light
-                   days_on: int=3, # number of days on the night shift
-                   days_off: int=2 # number of days off shift
+def ShiftWorkLight(lux: float=150.0, # lux intensity of the light. Must be a nonnegative float or int
+                   days_on: int=5, # number of days on the night shift. Must be a positive int
+                   days_off: int=2, # number of days off shift. Must be a positive int
+                   lights_on_workday: float=17.0, # hour of the day for lights to come on on a workday. Must be between 0.0 and 24.0
+                   lights_off_workday: float=9.0, # hour of the day for lights to go off on a workday. Must be between 0.0 and 24.0
+                   lights_on_day_off: float=9.0, # hour of the day for lights to come on on a day off. Must be between 0.0 and 24.0
+                   lights_off_day_off: float=24.0, # hour of the day for lights to go off on a day off. Must be between 0.0 and 24.0
                    ) -> 'Light':
     "Create a light schedule for a shift worker" 
     # type checking
+    lux_err_msg = "lux must be a nonnegative float or int, got "
     if not isinstance(lux, (float, int)):
-        raise ValueError(f"lux must be a nonnegative float or int, got {type(lux)}")
+        raise ValueError(lux_err_msg + f"{type(lux)}")
     elif lux < 0.0:
-        raise ValueError(f"lux must be a nonnegative float or int, got {lux}")
+        raise ValueError(lux_err_msg + f"{lux}")
+    days_on_err_msg = "days_on must be a positive int, got "
     if not isinstance(days_on, int):
-        raise ValueError(f"days_on must be a nonnegative int, got {type(days_on)}")
-    elif days_on < 0:
-        raise ValueError(f"days_on must be a nonnegative int, got {days_on}")
+        raise ValueError(days_on_err_msg + f"{type(days_on)}")
+    elif days_on <= 0:
+        raise ValueError(days_on_err_msg + f"{days_on}")
+    days_off_err_msg = "days_off must be a positive int, got "
     if not isinstance(days_off, int):
-        raise ValueError(f"days_off must be a nonnegative int, got {type(days_off)}")
-    elif days_off < 0:
-        raise ValueError(f"days_off must be a nonnegative int, got {days_off}")
-    if days_on == 0 and days_off == 0:
-        raise ValueError("days_on and days_off cannot both be 0")
+        raise ValueError(days_off_err_msg + f"{type(days_off)}")
+    elif days_off <= 0:
+        raise ValueError(days_off_err_msg + f"{days_off}")
+    lights_on_workday_err_msg = "lights_on_workday must be a float or int between 0.0 and 24.0, got "
+    if not isinstance(lights_on_workday, (float, int)):
+        raise ValueError(lights_on_workday_err_msg + f"{type(lights_on_workday)}")
+    elif lights_on_workday < 0.0 or lights_on_workday > 24.0:
+        raise ValueError(lights_on_workday_err_msg + f"{lights_on_workday}")
+    lights_off_workday_err_msg = "lights_off_workday must be a float or int between 0.0 and 24.0, got "
+    if not isinstance(lights_off_workday, (float, int)):
+        raise ValueError(lights_off_workday_err_msg + f"{type(lights_off_workday)}")
+    elif lights_off_workday < 0.0 or lights_off_workday > 24.0:
+        raise ValueError(lights_off_workday_err_msg + f"{lights_off_workday}")
+    lights_on_day_off_err_msg = "lights_on_day_off must be a float or int between 0.0 and 24.0, got "
+    if not isinstance(lights_on_day_off, (float, int)):
+        raise ValueError(lights_on_day_off_err_msg + f"{type(lights_on_day_off)}")
+    elif lights_on_day_off < 0.0 or lights_on_day_off > 24.0:
+        raise ValueError(lights_on_day_off_err_msg + f"{lights_on_day_off}")
+    lights_off_day_off_err_msg = "lights_off_day_off must be a float or int between 0.0 and 24.0, got "
+    if not isinstance(lights_off_day_off, (float, int)):
+        raise ValueError(lights_off_day_off_err_msg + f"{type(lights_off_day_off)}")
+    elif lights_off_day_off < 0.0 or lights_off_day_off > 24.0:
+        raise ValueError(lights_off_day_off_err_msg + f"{lights_off_day_off}")
     
-    workday = Light.RegularLight(lux=lux, lights_on=19.0, lights_off=11.0)
-    offday = Light.RegularLight(lux=lux, lights_on=7.0, lights_off=23.0)
-    total_schedule = [workday for _ in range(days_on-1)] + [offday for _ in range(days_off)]
-    for day in total_schedule:
-        workday = workday.concatenate(day)
-    return workday
+    # start already on the shift if lights_on_workday > lights_off_workday
+    if lights_on_workday > lights_off_workday:
+        total_schedule = Light(lux, start_time=0.0, duration=lights_off_workday)
+    # define light start times for each work day, except last day because that's a transition day
+    start_times_workdays = np.arange(1, days_on-1) * 24.0 + lights_on_workday
+    if lights_on_workday > lights_off_workday:
+        light_duration_workdays = 24.0 - lights_on_workday + lights_off_workday 
+        total_schedule += Light(lux, start_time=lights_on_workday, duration=light_duration_workdays)
+    else:
+        light_duration_workdays = lights_off_workday - lights_on_workday
+        total_schedule = Light(lux, start_time=lights_on_workday, duration=light_duration_workdays)
+    # add workdays to total schedule
+    for start_time in start_times_workdays:
+        total_schedule += Light(lux, start_time=start_time, duration=light_duration_workdays)
+    # transition from workday to day off. Sleep half of the time between `lights_on_workday` and `lights_on_day_off`
+    work_to_off_duration = (24.0 - lights_on_workday + lights_on_day_off) / 2.0
+    work_to_off_start = start_times_workdays[-1] + 24.0 
+    total_schedule += Light(lux, start_time=work_to_off_start, duration=work_to_off_duration)
+    # add days off to total schedule
+    # get current day number
+    start_times_days_off = np.arange(days_off-1) * 24.0 + lights_on_day_off + days_on * 24
+    if lights_on_day_off > lights_off_day_off:
+        light_duration_days_off = 24.0 - lights_on_day_off + lights_off_day_off
+    else:
+        light_duration_days_off = lights_off_day_off - lights_on_day_off
+    for start_time in start_times_days_off:
+        total_schedule += Light(lux, start_time=start_time, duration=light_duration_days_off)
+    # transition from day off to workday. Sleep in two chunks between `lights_off_day_off` and `lights_on_workday`
+    last_sleep_day_off = start_times_days_off[-1] + light_duration_days_off
+    wake_time_workday = (days_on + days_off - 1) * 24 + lights_on_workday
+    off_to_work_duration = (wake_time_workday - last_sleep_day_off) / 3.0
+    off_to_work_start = last_sleep_day_off + off_to_work_duration
+    total_schedule += Light(lux, start_time=off_to_work_start, duration=off_to_work_duration)
+    # complete the schedule to make it periodic with period 24*(days_on + days_off)
+    final_work_duration = (days_on + days_off) * 24.0 - wake_time_workday
+    total_schedule += Light(lux, start_time=wake_time_workday, duration=final_work_duration)
+    
+    return total_schedule
 
-# %% ../nbs/01_lights.ipynb 38
+# %% ../nbs/01_lights.ipynb 46
 @patch_to(Light)
 def SlamShift(lux: float=150.0, # lux intensity of the light
               shift: float=8.0, # number of hours to shift the light schedule
@@ -356,7 +369,7 @@ def SlamShift(lux: float=150.0, # lux intensity of the light
         light_before = light_before.concatenate(day)
     return light_before
 
-# %% ../nbs/01_lights.ipynb 41
+# %% ../nbs/01_lights.ipynb 49
 @patch_to(Light)
 def SocialJetlag(lux: float=150.0, # lux intensity of the light
                  num_regular_days: int=5, # number of days with a regular schedule
@@ -397,7 +410,7 @@ def SocialJetlag(lux: float=150.0, # lux intensity of the light
         
     return regular_days
 
-# %% ../nbs/01_lights.ipynb 44
+# %% ../nbs/01_lights.ipynb 52
 def make_pulse(t, tstart, tend, steep: float=30.0):
     return 0.5*np.tanh(steep*(t-tstart))-0.5*np.tanh(steep*(t-tend))
 
