@@ -16,18 +16,18 @@ and make an actogram plot
 ``` python
 from circadian.plots import Actogram
 from circadian.models import *
-from circadian.lights import Light
+from circadian.lights import LightSchedule
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 days_night = 3
 days_day = 2
-slam_shift = Light.ShiftWorkLight(lux = 300.0, 
-                                  days_on=days_night, 
-                                  days_off=days_day)
+slam_shift = LightSchedule.ShiftWorkLight(lux=300.0,
+                                          days_on=days_night, 
+                                          days_off=days_day)
 ts = np.arange(0, 24*30,0.10)
-light_values = slam_shift(ts, repeat_period=24*(days_night+days_day))
+light_values = slam_shift(ts)
 
 f_model = Forger99Model()
 spm_model = Hannay19()
