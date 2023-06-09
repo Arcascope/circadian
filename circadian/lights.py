@@ -16,7 +16,7 @@ from numpy.core.fromnumeric import repeat
 class LightSchedule:
     "Helper class for creating light schedules"
     def __init__(self, 
-                 light: float | Callable, # light function that takes in a time value and returns a float, if a float is passed, then the light function is a constant set to that lux value 
+                 light: Callable[[float], float], # light function that takes in a time value and returns a float, if a float is passed, then the light function is a constant set to that lux value 
                  period: float = None, # period in hours, if None, then the light pulse is not repeated. Must be positive
                  ) -> None:
         # period input checking
