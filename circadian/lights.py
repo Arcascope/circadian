@@ -16,7 +16,7 @@ from numpy.core.fromnumeric import repeat
 class LightSchedule:
     "Helper class for creating light schedules"
     def __init__(self, 
-                 light: Callable[[float], float], # light function that takes in a time value and returns a float, if a float is passed, then the light function is a constant set to that lux value 
+                 light: Callable[[float], float], # function that takes in a time value and returns a float, if a float is passed, then the light function is a constant set to that lux value 
                  period: float = None, # period in hours, if None, then the light pulse is not repeated. Must be positive
                  ) -> None:
         # period input checking
@@ -180,7 +180,7 @@ def concatenate_at(self,
                    timepoint: float, # timepoint (in hours) at which schedules are concatenated
                    shift_schedule: bool = True, # if True, then the schedule is shifted by the timepoint value
                    ) -> 'LightSchedule':
-    "Concatenate in time two LightSchedules at the provided timepoint. Function calls for `schedule` are shifted by the timepoint value if `shift_schedule` is True. "
+    "Concatenate two LightSchedules at the provided timepoint. When `shift_schedule=True`, `schedule` is shifted in time by `timepoint`. Not shifted otherwise"
     # check that the schedule input is a LightSchedule
     schedule_err_msg = "`schedule` should be a `LightSchedule` object"
     if not isinstance(schedule, LightSchedule):
@@ -218,10 +218,10 @@ def plot(self,
          plot_end_time: float, # end time of the plot in hours
          num_samples: int=10000, # number of samples to plot
          ax=None, # matplotlib axis to plot on
-         *args, # arguments to pass to matplotlib.pyplot.plot
-         **kwargs # keyword arguments to pass to matplotlib.pyplot.plot
+         *args,
+         **kwargs
          ) -> plt.Axes:
-    "Plot the light function between `start_time` and `end_time` with `num_samples` samples"
+    "Plot the light function between `start_time` and `end_time` with `num_samples` samples. Accepts `matplotlib` `*args` and `**kwargs`"
     # type checking
     if not isinstance(plot_start_time, (float, int)):
         raise ValueError(f"plot_start_time must be a float or int, got {type(plot_start_time)}")
@@ -245,10 +245,10 @@ def plot(self,
 
 # %% ../nbs/01_lights.ipynb 19
 @patch_to(LightSchedule)
-def RegularLight(lux: float=150.0, # intensity of the light in lux
-                 lights_on: float=7.0, # time of the day for lights to come on in hours
-                 lights_off: float=23.0, # time of the day for lights to go off in hours
-                 ) -> 'LightSchedule':
+def Regular(lux: float=150.0, # intensity of the light in lux
+            lights_on: float=7.0, # time of the day for lights to come on in hours
+            lights_off: float=23.0, # time of the day for lights to go off in hours
+            ) -> 'LightSchedule':
     "Create a regular light and darkness 24 hour schedule"
     # type checking
     if not isinstance(lux, (float, int)):
@@ -276,14 +276,14 @@ def RegularLight(lux: float=150.0, # intensity of the light in lux
 
 # %% ../nbs/01_lights.ipynb 21
 @patch_to(LightSchedule)
-def ShiftWorkLight(lux: float=150.0, # lux intensity of the light. Must be a nonnegative float or int
-                   days_on: int=5, # number of days on the night shift. Must be a positive int
-                   days_off: int=2, # number of days off shift. Must be a positive int
-                   lights_on_workday: float=17.0, # hour of the day for lights to come on on a workday. Must be between 0.0 and 24.0
-                   lights_off_workday: float=9.0, # hour of the day for lights to go off on a workday. Must be between 0.0 and 24.0
-                   lights_on_day_off: float=9.0, # hour of the day for lights to come on on a day off. Must be between 0.0 and 24.0
-                   lights_off_day_off: float=24.0, # hour of the day for lights to go off on a day off. Must be between 0.0 and 24.0
-                   ) -> 'LightSchedule':
+def ShiftWork(lux: float=150.0, # lux intensity of the light. Must be a nonnegative float or int
+              days_on: int=5, # number of days on the night shift. Must be a positive int
+              days_off: int=2, # number of days off shift. Must be a positive int
+              lights_on_workday: float=17.0, # hour of the day for lights to come on on a workday. Must be between 0.0 and 24.0
+              lights_off_workday: float=9.0, # hour of the day for lights to go off on a workday. Must be between 0.0 and 24.0
+              lights_on_day_off: float=9.0, # hour of the day for lights to come on on a day off. Must be between 0.0 and 24.0
+              lights_off_day_off: float=24.0, # hour of the day for lights to go off on a day off. Must be between 0.0 and 24.0
+              ) -> 'LightSchedule':
     "Create a light schedule for a shift worker" 
     # type checking
     lux_err_msg = "lux must be a nonnegative float or int, got "
@@ -323,14 +323,14 @@ def ShiftWorkLight(lux: float=150.0, # lux intensity of the light. Must be a non
         raise ValueError(lights_off_day_off_err_msg + f"{lights_off_day_off}")
     workweek_period = 24.0 * (days_on + days_off)
     # work days regular schedule
-    work_schedule = LightSchedule.RegularLight(lux, lights_on_workday, lights_off_workday)
+    work_schedule = LightSchedule.Regular(lux, lights_on_workday, lights_off_workday)
     # transition between work days and day off - sleep half of the time between `lights_off_workday` and `lights_on_day_off`
     workdays_finish = 24*(days_on - 1) + lights_on_workday
     first_transition_end = 24*days_on + lights_on_day_off
     transition_sleep_time = 0.5 * (workdays_finish + first_transition_end) - workdays_finish
     transition_day = LightSchedule.from_pulse(lux, workdays_finish, transition_sleep_time)
     # days off regular schedule
-    days_off_schedule = LightSchedule.RegularLight(lux, lights_on_day_off, lights_off_day_off)
+    days_off_schedule = LightSchedule.Regular(lux, lights_on_day_off, lights_off_day_off)
     # transition between day off and work day - sleep, in two chunks, a third of what's left until next workday
     second_transition_start = 24*(days_on + days_off - 2) + lights_off_day_off 
     workdays_start_again = 24*(days_on + days_off - 1) + lights_on_workday
@@ -345,11 +345,11 @@ def ShiftWorkLight(lux: float=150.0, # lux intensity of the light. Must be a non
     final_schedule = LightSchedule(total_schedule, period=workweek_period)
     return final_schedule
 
-# %% ../nbs/01_lights.ipynb 24
+# %% ../nbs/01_lights.ipynb 23
 @patch_to(LightSchedule)
 def SlamShift(lux: float=150.0, # intensity of the light in lux
               shift: float=8.0, # shift in the light schedule in hours
-              before_days: int=10, # days before the shift occurs 
+              before_days: int=5, # days before the shift occurs 
               starting_lights_on: float=7.0, # time of the day for lights to come on
               starting_lights_off: float=23.0, # time of the day for lights to go off
               ) -> 'LightSchedule':
@@ -376,7 +376,7 @@ def SlamShift(lux: float=150.0, # intensity of the light in lux
     elif starting_lights_off < 0.0 or starting_lights_off > 24.0:
         raise ValueError(f"starting_lights_off must be a float or int between 0 and 24, got {starting_lights_off}")
     # create the schedule
-    schedule_before = LightSchedule.RegularLight(lux, starting_lights_on, starting_lights_off)
+    schedule_before = LightSchedule.Regular(lux, starting_lights_on, starting_lights_off)
     last_lights_off_before = 24.0 * (before_days - 1) + starting_lights_off 
     first_lights_on_after =  24.0 * before_days + starting_lights_on + shift
     # sleep one third of the time between `last_lights_off_before` and `first_lights_on_after`
@@ -384,12 +384,12 @@ def SlamShift(lux: float=150.0, # intensity of the light in lux
     transition_schedule = LightSchedule.from_pulse(lux, last_lights_off_before + transition_sleep_time, transition_sleep_time)
     shifted_lights_on = np.mod(starting_lights_on + shift, 24.0)
     shifted_lights_off = np.mod(starting_lights_off + shift, 24.0)
-    schedule_after = LightSchedule.RegularLight(lux, shifted_lights_on, shifted_lights_off)
+    schedule_after = LightSchedule.Regular(lux, shifted_lights_on, shifted_lights_off)
     final_schedule = schedule_before.concatenate_at(transition_schedule, last_lights_off_before, shift_schedule=False)
     final_schedule = final_schedule.concatenate_at(schedule_after, first_lights_on_after, shift_schedule=False)
     return final_schedule
 
-# %% ../nbs/01_lights.ipynb 26
+# %% ../nbs/01_lights.ipynb 25
 @patch_to(LightSchedule)
 def SocialJetlag(lux: float=150.0, # intensity of the light in lux
                  num_regular_days: int=5, # number of days with a regular schedule
@@ -426,8 +426,8 @@ def SocialJetlag(lux: float=150.0, # intensity of the light in lux
         raise ValueError(f"regular_days_lights_off must be a float or int between 0 and 24, got {regular_days_lights_off}")
     # create the schedule 
     overall_period = 24.0 * (num_regular_days + num_jetlag_days)
-    regular_days = LightSchedule.RegularLight(lux, lights_on=regular_days_lights_on, lights_off=regular_days_lights_off)
-    jetlag_days = LightSchedule.RegularLight(lux, lights_on=regular_days_lights_on + hours_delayed,
+    regular_days = LightSchedule.Regular(lux, lights_on=regular_days_lights_on, lights_off=regular_days_lights_off)
+    jetlag_days = LightSchedule.Regular(lux, lights_on=regular_days_lights_on + hours_delayed,
                                              lights_off=np.mod(regular_days_lights_off + hours_delayed, 24))
     timepoint_change = 24.0 * (num_regular_days - 1) + regular_days_lights_off
     total_schedule = regular_days.concatenate_at(jetlag_days, timepoint_change, shift_schedule=False)
@@ -435,7 +435,7 @@ def SocialJetlag(lux: float=150.0, # intensity of the light in lux
         
     return final_schedule
 
-# %% ../nbs/01_lights.ipynb 28
+# %% ../nbs/01_lights.ipynb 27
 # TODO: Replace the use of these two functions with LightSchedules
 def make_pulse(t, tstart, tend, steep: float=30.0):
     return 0.5*np.tanh(steep*(t-tstart))-0.5*np.tanh(steep*(t-tend))

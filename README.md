@@ -23,7 +23,7 @@ import numpy as np
 
 days_night = 3
 days_day = 2
-slam_shift = LightSchedule.ShiftWorkLight(lux=300.0,
+slam_shift = LightSchedule.ShiftWork(lux=300.0,
                                           days_on=days_night, 
                                           days_off=days_day)
 ts = np.arange(0, 24*30,0.10)
