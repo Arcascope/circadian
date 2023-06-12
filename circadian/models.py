@@ -190,7 +190,7 @@ class CircadianModel(ABC):
         return ic
 
 
-# %% ../nbs/00_models.ipynb 25
+# %% ../nbs/00_models.ipynb 27
 class Forger99Model(CircadianModel):
     """ Implementation of the Forger 1999 model """
 
@@ -328,7 +328,7 @@ class Forger99Model(CircadianModel):
     @property
     def default_initial_conditions(self) -> np.ndarray:
         """
-        x= –0.3 and xc= –1.13 are the default initial conditions for the model
+        x= â€“0.3 and xc= â€“1.13 are the default initial conditions for the model
         should be the value near the habitual bed time of the individual. 
         """
         return np.array([-0.3,-1.13,0.0])
@@ -339,7 +339,7 @@ class Forger99Model(CircadianModel):
     def __str__(self) -> str:
         return "Forger99Model"
 
-# %% ../nbs/00_models.ipynb 40
+# %% ../nbs/00_models.ipynb 42
 class Hannay19TP(CircadianModel):
     """  The Hannay et al 2019 two population model, which models the ventral and dorsal SCN populations """
 
@@ -500,7 +500,7 @@ class Hannay19TP(CircadianModel):
     def default_initial_conditions(self) -> np.ndarray:
         return np.array([1.0,1.0,0.0,0.10,0.0])
 
-# %% ../nbs/00_models.ipynb 43
+# %% ../nbs/00_models.ipynb 45
 class Hannay19(CircadianModel):
     """
         A simple python program to integrate the human circadian rhythms model 
@@ -644,7 +644,7 @@ class Hannay19(CircadianModel):
         return np.array([0.70, phase_ic_guess(time_of_day=time_of_day), 0.0])
 
 
-# %% ../nbs/00_models.ipynb 55
+# %% ../nbs/00_models.ipynb 57
 class Hilaire2007(CircadianModel):
     
     def __init__(self, params: dict = None):
@@ -778,7 +778,7 @@ class Hilaire2007(CircadianModel):
     def __str__(self) -> str:
         return "St. Hilaire 2007 NonPhotic Model"
 
-# %% ../nbs/00_models.ipynb 59
+# %% ../nbs/00_models.ipynb 61
 class KronauerJewett(CircadianModel):
     """ 
         Higher order vdp model for the circadian clock 
