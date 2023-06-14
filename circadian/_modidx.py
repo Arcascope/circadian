@@ -2,8 +2,8 @@
 
 d = { 'settings': { 'branch': 'main',
                 'doc_baseurl': '/circadian',
-                'doc_host': 'https://khannay.github.io',
-                'git_url': 'https://github.com/khannay/circadian',
+                'doc_host': 'https://arcascope.github.io/circadian/',
+                'git_url': 'https://github.com/Arcascope/circadian',
                 'lib_path': 'circadian'},
   'syms': { 'circadian.cli': { 'circadian.cli.main_acto': ('cli.html#main_acto', 'circadian/cli.py'),
                                'circadian.cli.main_esri': ('cli.html#main_esri', 'circadian/cli.py')},
