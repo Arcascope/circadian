@@ -20,24 +20,28 @@ pip install circadian
 ## Overview
 
 The `circadian` package implements key mathematical models in the field
-such as: - `Forger99Model()` - [Forger et
-al. (1999)](https://doi.org/10.1177/074873099129000867) - `Hannay19()`
-and `Hannay19TP()` - [Hannay et
-al. (2019)](https://doi.org/10.1177/0748730419878298) -
-`KronauerJewett()` - [Kronauer et
-al. (1999)](https://doi.org/10.1177/074873049901400608)
+such as:
+
+- `Forger99Model()` - [Forger et
+  al. (1999)](https://doi.org/10.1177/074873099129000867)
+- `Hannay19()` and `Hannay19TP()` - [Hannay et
+  al. (2019)](https://doi.org/10.1177/0748730419878298)
+- `KronauerJewett()` - [Kronauer et
+  al. (1999)](https://doi.org/10.1177/074873049901400608)
 
 See all the available models at
 [circadian/models.py](https://github.com/Arcascope/circadian/blob/main/circadian/models.py)
 
 Additionally, `circadian` provides a set of tools for simulating and
-analzying circadian rhythms: - Define light schedules using the
-[`Light`](https://arcascope.github.io/circadian/lights.html#light) class
-and feed directly into the models - Calculate phase response curves
-using the
-[`PRCFinder`](https://arcascope.github.io/circadian/prc.html#prcfinder)
-class - Generate actograms and phase plots with the `circadian.plots`
-module
+analzying circadian rhythms:
+
+- Define light schedules using the
+  [`Light`](https://arcascope.github.io/circadian/lights.html#light)
+  class and feed directly into the models
+- Calculate phase response curves using the
+  [`PRCFinder`](https://arcascope.github.io/circadian/prc.html#prcfinder)
+  class
+- Generate actograms and phase plots with the `circadian.plots` module
 
 Finally, the package streamlines the process of reading, processing, and
 analyzing wereable data via the `circadian.readers` module.
@@ -48,7 +52,7 @@ for a full overview of the package and its features.
 ## Example
 
 The code below shows how to simulate the circadian rhythm of a shift
-worker for three different models and visualize the results in an
+worker for four different models and visualize the results in an
 actogram plot
 
 ``` python
