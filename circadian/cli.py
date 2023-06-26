@@ -4,24 +4,28 @@
 __all__ = ['mytz', 'main_acto', 'main_esri']
 
 # %% ../nbs/09_cli.ipynb 4
+import sys
 import torch
-from torch import jit
-from datetime import datetime
 import argparse
+import circadian
+import numpy as np
+import pandas as pd
+from torch import jit
+from pathlib import Path
+from pytz import timezone
+from datetime import datetime
+from .metrics import *
+import matplotlib.pyplot as plt
 from .plots import Actogram
 from .models import Hannay19
-from .readers import WearableData, read_standard_csv, read_standard_json
 from .utils import phase_ic_guess
-from .sleep import cluster_sleep_periods_scipy, sleep_midpoint
 from .utils import simple_norm_stepshr_sleep_classifier
-from datetime import datetime
-import matplotlib.pylab as plt
-import numpy as np
-from pytz import timezone
+from .sleep import cluster_sleep_periods_scipy, sleep_midpoint
+from .readers import WearableData, read_standard_csv, read_standard_json
+
 mytz = timezone('EST')
 
-
-# %% ../nbs/09_cli.ipynb 5
+# %% ../nbs/09_cli.ipynb 6
 def main_acto():
     parser = argparse.ArgumentParser(description="""Make an actogram""")
 
@@ -225,28 +229,7 @@ def main_acto():
     #     print(f"The average bedtime is {np.mean(np.fmod(sleep_mid-0.5*duration, 24.0))}")
     #     print(f"The average waketime is {np.mean(np.fmod(sleep_mid,24.0)+0.5*duration)}")
 
-
     plt.show()
-
-
-# %% ../nbs/09_cli.ipynb 6
-import numpy as np
-import matplotlib.pyplot as plt
-import argparse
-from pathlib import Path
-import sys
-import torch
-from torch import jit
-import circadian
-from .readers import WearableData, read_standard_csv, read_standard_json
-from .models import Hannay19
-from .utils import phase_ic_guess
-from .metrics import *
-from .utils import simple_norm_stepshr_sleep_classifier
-import pandas as pd
-from .plots import Actogram
-from pytz import timezone
-
 
 # %% ../nbs/09_cli.ipynb 7
 def main_esri():
@@ -396,6 +379,4 @@ def main_esri():
                         opacity=1.0,
                         sigma=[args.sigma, args.sigma])
 
-
         plt.show()
-

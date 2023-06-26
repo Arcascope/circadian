@@ -5,42 +5,32 @@ __all__ = ['EXAMPLE_DATA', 'wearable_schema', 'WearableData', 'combine_wearable_
            'read_standard_json', 'read_actiwatch']
 
 # %% ../nbs/05_readers.ipynb 4
-from copy import deepcopy
-import datetime
-from datetime import datetime
-import numpy as np
-import pandas as pd
-import pylab as plt
-from dataclasses import dataclass
-from scipy.stats import linregress
-
+import os
 import json
 import gzip
-from typing import List, Tuple, Dict, Union, Optional, Any, Callable, Iterable
-import os
-from .utils import *
+import glob 
 import random
 import difflib
-import glob 
-import os
-from scipy.ndimage import gaussian_filter1d
+import circadian
+import numpy as np
+import pylab as plt
+import pandas as pd
 from os import read
+from pathlib import Path
+from copy import deepcopy
+from .utils import *
+from datetime import datetime
+from jsonschema import validate
+from dataclasses import dataclass
+from scipy.stats import linregress
+from fastcore.basics import patch_to
+from .plots import Actogram
+from scipy.ndimage import gaussian_filter1d
+from typing import List, Tuple, Dict, Union, Optional, Any, Callable, Iterable
+
 pd.options.mode.chained_assignment = None
 
-import glob
-import os
-import random
-import difflib
-from scipy.ndimage import gaussian_filter1d
-
-from  jsonschema import validate
-from fastcore.basics import *
-from .plots import Actogram
-import circadian
-from pathlib import Path
-
 # %% ../nbs/05_readers.ipynb 5
-# path to the data folder
 EXAMPLE_DATA = circadian.__path__[0]
 
 # %% ../nbs/05_readers.ipynb 6
@@ -71,12 +61,10 @@ wearable_schema = {
     },
     "required": ["steps", "wake", "heartrate"]
 }
-    
 
 # %% ../nbs/05_readers.ipynb 9
 @dataclass
 class WearableData:
-    
     _dataframe: pd.DataFrame # the dataframe that holds the data must have datetime columns plus any other wearable streams from steps, heartrate, wake, light_estimate, activity
     phase_measure: np.ndarray = None
     phase_measure_times: np.ndarray = None
@@ -254,9 +242,8 @@ class WearableData:
 
         return wdata
 
-
 # %% ../nbs/05_readers.ipynb 10
-@patch 
+@patch_to(WearableData)
 def steps_hr_loglinear(self: WearableData
                        ) -> Tuple[float, float]:
         """
@@ -272,7 +259,7 @@ def steps_hr_loglinear(self: WearableData
         return slope, intercept
 
 # %% ../nbs/05_readers.ipynb 12
-@patch
+@patch_to(WearableData)
 def plot_heartrate(self: WearableData, 
                    t1=None, 
                    t2=None, 
@@ -305,10 +292,9 @@ def plot_heartrate(self: WearableData,
         if show_plot:
             plt.show()
         return ax
-      
 
 # %% ../nbs/05_readers.ipynb 13
-@patch
+@patch_to(WearableData)
 def scatter_hr_steps(self: WearableData, 
                      take_log: bool = True, # Log transform the data?
                      *args, 
@@ -338,7 +324,7 @@ def scatter_hr_steps(self: WearableData,
         plt.show()
 
 # %% ../nbs/05_readers.ipynb 14
-@patch
+@patch_to(WearableData)
 def plot_hr_steps(self: WearableData, 
                   t1: float = None, 
                   t2: float = None, 
@@ -387,7 +373,6 @@ def plot_hr_steps(self: WearableData,
         ax[1].set_xlim((time_start, time_end+3.0))
         ax[0].set_ylim((0, 200))
         plt.show()
-
 
 # %% ../nbs/05_readers.ipynb 16
 def combine_wearable_streams(steps: pd.DataFrame,  # dataframe with columns 'start', 'end', 'steps'
@@ -498,8 +483,6 @@ def read_standard_csv(path: str,  # path to the directory containing the csv fil
 
     return combine_wearable_streams(steps, heartrate, wake, bin_minutes, subject_id, data_id, sleep_trim, inner_join)
 
-
-
 # %% ../nbs/05_readers.ipynb 17
 def read_standard_json(filepath: str,  # path to json file
                        bin_minutes: int = 6,  # data will be binned to this resolution in minutes
@@ -524,9 +507,8 @@ def read_standard_json(filepath: str,  # path to json file
 
     return combine_wearable_streams(steps, heartrate, wake, bin_minutes, subject_id, data_id, sleep_trim, inner_join)
 
-
 # %% ../nbs/05_readers.ipynb 18
-@patch 
+@patch_to(WearableData)
 def fillna(self: WearableData, 
              column_name: str = "heartrate", # column to fill in the dataframe
              with_value: float = 0.0, # value to fill with
@@ -542,7 +524,7 @@ def fillna(self: WearableData,
         return self._copy_with_metadata(df)
 
 # %% ../nbs/05_readers.ipynb 34
-@patch 
+@patch_to(WearableData)
 def plot_light_activity(self: WearableData, 
                         show=True, 
                         vlines=None, 
@@ -584,16 +566,15 @@ def plot_light_activity(self: WearableData,
         else:
             return ax
 
-
 # %% ../nbs/05_readers.ipynb 36
 def read_actiwatch(filepath: str, # path to actiwatch csv file
-                        MIN_LIGHT_THRESHOLD=5000, # used to trim off empty data at the beginning and end of the file, must reach this amount of light to be included. Turn this off can setting this to 0 or negative
-                        round_data=True, # round the data to the nearest bin_minutes
-                        bin_minutes=6, # bin the data to this resolution in minutes, only used if round_data is true
-                        dt_format: str = None, # format of the date time string, if None, will be inferred
-                        data_id: str = "Actiwatch", # name of the data source
-                        subject_id: str = "unknown-subject", #subject id to be used
-                        ) -> WearableData:
+                   MIN_LIGHT_THRESHOLD=5000, # used to trim off empty data at the beginning and end of the file, must reach this amount of light to be included. Turn this off can setting this to 0 or negative 
+                   round_data=True, # round the data to the nearest bin_minutes 
+                   bin_minutes=6, # bin the data to this resolution in minutes, only used if round_data is true 
+                   dt_format: str = None, # format of the date time string, if None, will be inferred 
+                   data_id: str = "Actiwatch", # name of the data source 
+                   subject_id: str = "unknown-subject", #subject id to be used
+                   ) -> WearableData:
     
     df = pd.read_csv(filepath, names=['Date', 'Time', 'Activity', 'White Light', 'Sleep/Wake'], header=0) 
     df['datetime'] = df['Date']+" "+df['Time']
@@ -641,4 +622,3 @@ def read_actiwatch(filepath: str, # path to actiwatch csv file
         data_id=data_id,
         subject_id=subject_id
     )
-

@@ -3,34 +3,29 @@
 # %% auto 0
 __all__ = ['TwoProcessModel', 'sleep_midpoint', 'cluster_sleep_periods_scipy']
 
-# %% ../nbs/06_sleep.ipynb 2
-from nbdev import show_doc
-
-# %% ../nbs/06_sleep.ipynb 3
-import numpy as np
-import pandas as pd
-import scipy as sp
-from numba import jit
-from scipy import interpolate
-import torch 
+# %% ../nbs/06_sleep.ipynb 4
+import copy
 import json
 import pytz
+import torch 
 import datetime
-import copy
-import scipy as sp
-from scipy.integrate import solve_ivp
 from math import *
+import scipy as sp
+import numpy as np
 import pylab as plt
-
-from scipy.optimize import minimize
+import pandas as pd
+from numba import jit
+from scipy import interpolate
+from .plots import *
 from .utils import *
 from .models import * 
 from .lights import *
-from .plots import *
+from scipy.optimize import minimize
+from scipy.integrate import solve_ivp
 
-# %% ../nbs/06_sleep.ipynb 5
+# %% ../nbs/06_sleep.ipynb 6
 class TwoProcessModel:
-
+    "Implementation of the two-process model of sleep regulation."
     def __init__(self, steps_wake_threshold: float = 10.0):
         self.steps_wake_threshold = steps_wake_threshold
         self.awake = True
@@ -104,9 +99,9 @@ class TwoProcessModel:
         for idx in range(1,len(ts)):
             current_state = self.step_rk4(current_state, steps[idx], phase[idx])
             sol[:,idx] = current_state
-        return(DynamicalTrajectory(ts, np.array(sol)))
+        return(DynamicalTrajectory(ts, np.array(sol.T)))
 
-# %% ../nbs/06_sleep.ipynb 7
+# %% ../nbs/06_sleep.ipynb 8
 def sleep_midpoint(timetotal: np.ndarray, 
                    Wake: np.ndarray, 
                    durations=True):
@@ -120,7 +115,6 @@ def sleep_midpoint(timetotal: np.ndarray,
         time where 
 
     """
-
     sleep_start = []
     sleep_end = []
     awake = Wake[0] > 0.50
@@ -152,9 +146,7 @@ def sleep_midpoint(timetotal: np.ndarray,
     else:
         return np.array(sleep_midpoints)
 
-
-
-# %% ../nbs/06_sleep.ipynb 8
+# %% ../nbs/06_sleep.ipynb 9
 def cluster_sleep_periods_scipy(wake_data: np.ndarray, 
                                 epsilon: float,
                                 makeplot: bool = False,
@@ -169,7 +161,6 @@ def cluster_sleep_periods_scipy(wake_data: np.ndarray,
 
         cluster_sleep_periods(wake_data : np.ndarray, epsilon: float, makeplot: bool=False):
     """
-
     np.nan_to_num(wake_data, 0.50)
 
     def objective(w):

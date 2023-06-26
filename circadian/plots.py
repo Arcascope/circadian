@@ -4,26 +4,22 @@
 __all__ = ['Actogram', 'plot_mae', 'plot_torus', 'Stroboscopic', 'plot_actogram', 'plot_phasetimes']
 
 # %% ../nbs/03_plots.ipynb 4
-from scipy.ndimage import gaussian_filter1d
-from copy import deepcopy
-import pylab as plt
-import numpy as np
-from pathlib import Path
 import sys
-from .utils import cut_phases_12
+import matplotlib
+import numpy as np
+import pylab as plt
+from pathlib import Path
+from copy import deepcopy
 from .models import Hannay19
-from .lights import *
-
-#from circadian.readers import read_standard_json
-import matplotlib as mpl
-
+from .utils import cut_phases_12
+from .lights import LightSchedule
+from scipy.ndimage import gaussian_filter1d
 
 # %% ../nbs/03_plots.ipynb 7
 class Actogram:
     """ 
         Create an Actogram visualisation of the data
     """
-
     def __init__(self,
                  time_total: np.ndarray, # time in hours
                  light_vals: np.ndarray, # light values or proxy should be the same length as time_total
@@ -241,8 +237,6 @@ class Actogram:
                 self.ax.fill_betweenx(
                     yvals_split[idx], xx-error_split[idx]+24.0, xx+error_split[idx]+24.0, alpha=alpha_error, *args, **kwargs)
 
-
-
 # %% ../nbs/03_plots.ipynb 9
 def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
              dlmo_pred: np.ndarray,  # predicted to be in hours
@@ -281,8 +275,6 @@ def plot_mae(dlmo_actual: np.ndarray,  # expected to be in hours
     ax.set_ylabel("Model Prediction (hrs)")
     ax.set_xlabel("Experimental DLMO (hrs)")
 
-
-
 # %% ../nbs/03_plots.ipynb 11
 def plot_torus(phase1: np.ndarray, # array of phases  
                phase2: np.ndarray, #array of phases, assumed to be the same length as phase1
@@ -307,21 +299,19 @@ def plot_torus(phase1: np.ndarray, # array of phases
     
     return ax
 
-
 # %% ../nbs/03_plots.ipynb 15
 class Stroboscopic:
     """
     This class can be used to make a stroboscopic plot of the entrainment of an oscillator to a sudden shift in schedule
     """
-
     def __init__(self, 
                  ax: plt.Axes, # The axes to plot on
                  ts: np.ndarray, # The time series of the model
-                amplitude: np.ndarray, # The amplitude of the model, assumed to be the same length as ts
-                phase: np.ndarray, # The phase of the model, assumed to be the same length as ts
-                period: float = 24.0, # The time period between stroboscopic arrows
-                *args: tuple, #passed to the quiver plot
-                **kwargs: dict #passed to the quiver plot
+                 amplitude: np.ndarray, # The amplitude of the model, assumed to be the same length as ts
+                 phase: np.ndarray, # The phase of the model, assumed to be the same length as ts
+                 period: float = 24.0, # The time period between stroboscopic arrows
+                 *args: tuple, #passed to the quiver plot
+                 **kwargs: dict #passed to the quiver plot
         ):
         
         self.ts = ts
@@ -380,7 +370,7 @@ class Stroboscopic:
 def plot_actogram(ax: plt.Axes, # plot axes
                   zeitgeber: np.ndarray, # the zeitgeber to display
                   num_day: int = 240, # number of points per day
-                  cmap: mpl.colors.Colormap = mpl.cm.get_cmap('jet'), # the colormap to use
+                  cmap: matplotlib.colors.Colormap = matplotlib.colormaps['jet'], # the colormap to use
                   label_days: int = 7, # the number of days between labels
                   *args, # passed to imshow
                   **kwargs # passed to imshow

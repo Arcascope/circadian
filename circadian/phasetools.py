@@ -3,18 +3,15 @@
 # %% auto 0
 __all__ = ['cosinor', 'cosinor_phase', 'cosinor_goals']
 
-# %% ../nbs/08_phasetools.ipynb 2
-import circadian 
-
-
 # %% ../nbs/08_phasetools.ipynb 4
+import circadian
 import numpy as np 
-import matplotlib.pyplot as plt
 import scipy as sp 
-from typing import List 
 import numpy.linalg 
+from typing import List 
+import matplotlib.pyplot as plt
 
-# %% ../nbs/08_phasetools.ipynb 9
+# %% ../nbs/08_phasetools.ipynb 8
 def cosinor(t: np.array, # time vector
                   y: np.array, # signal vector
                   tau: float # period of cosinor analysis 
@@ -27,13 +24,12 @@ def cosinor(t: np.array, # time vector
     a2 = np.dot(y, cos_transform) / np.dot(cos_transform, cos_transform)
     return np.array([a1, a2])
 
-
-# %% ../nbs/08_phasetools.ipynb 10
+# %% ../nbs/08_phasetools.ipynb 9
 def cosinor_phase(a: np.array) -> float: 
     z = a[1]+ complex(0,1)*a[0]
     return np.angle(z)
 
-# %% ../nbs/08_phasetools.ipynb 13
+# %% ../nbs/08_phasetools.ipynb 12
 def cosinor_goals(t, y, tau: float):
     omega = 2*np.pi/tau 
     A = np.stack((np.ones(len(t)), np.sin(omega*t), np.cos(omega*t)), axis=1)
@@ -44,4 +40,3 @@ def cosinor_goals(t, y, tau: float):
     
     z = complex(0,1)*np.dot(x1,y) /np.dot(x1,np.sin(omega*t)) + np.dot(x2,y)/np.dot(x2,np.cos(omega*t))
     return np.array([z.imag, z.real])
-    

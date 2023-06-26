@@ -3,13 +3,13 @@
 # %% auto 0
 __all__ = ['esri', 'esri_trajectory']
 
-# %% ../nbs/04_metrics.ipynb 3
+# %% ../nbs/04_metrics.ipynb 4
 import numpy as np
 from .models import Hannay19
 from .utils import phase_ic_guess
 from .readers import WearableData
 
-# %% ../nbs/04_metrics.ipynb 4
+# %% ../nbs/04_metrics.ipynb 5
 def esri(awObj: WearableData, 
                 gamma: float = 0.0,
                 multiplier: float = 1.0,
@@ -19,21 +19,17 @@ def esri(awObj: WearableData,
     psi0 = phase_ic_guess(awObj.time_total[0])
 
     idx = awObj.time_total < awObj.time_total[0]+24*num_days
-    sol = spmodel.integrate_model(
-        awObj.time_total[idx], multiplier*awObj.steps[idx],
-        np.array([0.10, psi0, 0.0])
-    )
-    return sol.ts, sol.states
+    sol = spmodel.integrate(awObj.time_total[idx], 
+                            np.array([0.10, psi0, 0.0]),
+                            multiplier*awObj.steps[idx],) 
+    return sol.time, sol.states
 
-
-
-# %% ../nbs/04_metrics.ipynb 5
+# %% ../nbs/04_metrics.ipynb 6
 def esri_trajectory(awObj: WearableData,
-                           gamma: float = 0.0,
-                           multiplier: float = 1.0,
-                           num_days: float = 4.5,
-                           ):
-
+                    gamma: float = 0.0,
+                    multiplier: float = 1.0,
+                    num_days: float = 4.5,
+                    ):
     spmodel = Hannay19({'K': 0.0, 'gamma': gamma})
     compactness_trajectory = []
     time_trajectory = []
@@ -47,10 +43,9 @@ def esri_trajectory(awObj: WearableData,
             tsFilter = awObj.time_total[idxStart]
             idx = tsFilter < np.array(tsFilter[0])+24*num_days
             stepsFilter = awObj.steps[idxStart]
-            trajectory = spmodel.integrate_model(
-                tsFilter[idx], multiplier*stepsFilter[idx],
-                np.array([0.10, psi0, 0.0])
-            )
+            trajectory = spmodel.integrate(
+                tsFilter[idx], np.array([0.10, psi0, 0.0], 
+                multiplier*stepsFilter[idx]))
             sol = trajectory.states
             if sol[0, -1] > 0.0:
                 compactness_trajectory.append(sol[0, -1])
@@ -61,4 +56,3 @@ def esri_trajectory(awObj: WearableData,
             print("Error in trajectory")
         timeStart += 1.0
     return time_trajectory, timestamps, compactness_trajectory
-

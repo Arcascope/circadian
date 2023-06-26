@@ -7,25 +7,23 @@ __all__ = ['NpEncoder', 'simple_norm_stepshr_sleep_classifier', 'phase_ic_guess'
            'circular_scatter', 'times_to_angle', 'timezone_mapper', 'split_missing_data', 'split_drop_data',
            'redact_dates']
 
-# %% ../nbs/07_utils.ipynb 3
-import numpy as np
-import pandas as pd
-import scipy as sp
-from numba import jit
-from scipy import interpolate
-import torch 
+# %% ../nbs/07_utils.ipynb 4
+import copy
 import json
 import pytz
-import datetime
-import copy
-import scipy as sp
-from scipy.integrate import solve_ivp
-from math import *
-import pylab as plt
 import gzip
+import torch 
+import datetime
+from math import *
+import scipy as sp
+import numpy as np
+import pylab as plt
+import pandas as pd
+from numba import jit
+from scipy import interpolate
+from scipy.integrate import solve_ivp
 
-
-# %% ../nbs/07_utils.ipynb 4
+# %% ../nbs/07_utils.ipynb 5
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -38,7 +36,7 @@ class NpEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super(NpEncoder, self).default(obj)
 
-# %% ../nbs/07_utils.ipynb 5
+# %% ../nbs/07_utils.ipynb 6
 pd.options.mode.chained_assignment = None  # default='warn'
 
 def simple_norm_stepshr_sleep_classifier(t):
@@ -133,7 +131,7 @@ def parse_dt(date, time):
     return pd.to_datetime(strDate, format='%m/%d/%Y %I:%M %p')
 
 
-# %% ../nbs/07_utils.ipynb 7
+# %% ../nbs/07_utils.ipynb 8
 def circular_mean(series):
     Z=complex(0,0)
     series=np.array(series)
@@ -207,12 +205,8 @@ def circular_scatter(ax, angles, clock_times=False, radius=1.0, color='blue'):
     ax.set_rmax(1.2)
     ax.set_rticks([0.0,0.2,0.6,0.8,1.0])
     ax.annotate("", xytext=(0.0,0.0), xy=(circular_mean(angles),phase_coherence(angles)),arrowprops=dict(facecolor=color))
-    
-    
-    
 
-
-# %% ../nbs/07_utils.ipynb 9
+# %% ../nbs/07_utils.ipynb 10
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, np.integer):
@@ -319,7 +313,7 @@ def split_drop_data(date_time, ts, steps, hr, wake, break_threshold=96.0, min_le
     else:
         return None
 
-# %% ../nbs/07_utils.ipynb 11
+# %% ../nbs/07_utils.ipynb 12
 def redact_dates(infile: str, # the input file in json format
                  outfile: str, # the output file in json format with dates redacted, for user privacy
                  gzip_opt: bool = False # if the input file is gzipped, if the extension is .gz, this is set to True
@@ -339,5 +333,3 @@ def redact_dates(infile: str, # the input file in json format
         data['wake'][i]['end'] -= first_time
         
     json.dump(data, open(outfile, 'w'))
-    
-    
