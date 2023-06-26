@@ -3,7 +3,7 @@ project:
 
 website:
   title: "circadian"
-  site-url: "https://khannay.github.io/circadian"
+  site-url: "https://arcascope.github.io/circadian//circadian"
   description: "Tools for the simulation and analysis of circadian rhythms"
   repo-branch: main
-  repo-url: "https://github.com/khannay/circadian"
+  repo-url: "https://github.com/Arcascope/circadian"
