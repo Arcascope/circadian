@@ -216,7 +216,7 @@ class CircadianModel(ABC):
         self.__num_inputs = num_inputs
         self.__default_initial_condition = default_initial_condition
         self._trajectory = None
-        self._initial_condition = None
+        self._initial_condition = default_initial_condition
     
     @property
     def parameters(self) -> dict:
