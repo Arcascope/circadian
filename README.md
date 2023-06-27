@@ -22,12 +22,14 @@ pip install circadian
 The `circadian` package implements key mathematical models in the field
 such as:
 
-- `Forger99Model()` - [Forger et
-  al. (1999)](https://doi.org/10.1177/074873099129000867)
-- `Hannay19()` and `Hannay19TP()` - [Hannay et
-  al. (2019)](https://doi.org/10.1177/0748730419878298)
-- `KronauerJewett()` - [Kronauer et
-  al. (1999)](https://doi.org/10.1177/074873049901400608)
+- [`Forger99`](https://arcascope.github.io/circadian/models.html#forger99) -
+  [Forger et al. (1999)](https://doi.org/10.1177/074873099129000867)
+- [`Hannay19`](https://arcascope.github.io/circadian/models.html#hannay19)
+  and
+  [`Hannay19TP`](https://arcascope.github.io/circadian/models.html#hannay19tp) -
+  [Hannay et al. (2019)](https://doi.org/10.1177/0748730419878298)
+- [`Jewett99`](https://arcascope.github.io/circadian/models.html#jewett99) -
+  [Kronauer et al. (1999)](https://doi.org/10.1177/074873049901400608)
 
 See all the available models at
 [circadian/models.py](https://github.com/Arcascope/circadian/blob/main/circadian/models.py)
@@ -35,9 +37,8 @@ See all the available models at
 Additionally, `circadian` provides a set of tools for simulating and
 analzying circadian rhythms:
 
-- Define light schedules using the
-  [`Light`](https://arcascope.github.io/circadian/lights.html#light)
-  class and feed directly into the models
+- Define light schedules using the `Light` class and feed directly into
+  the models
 - Calculate phase response curves using the
   [`PRCFinder`](https://arcascope.github.io/circadian/prc.html#prcfinder)
   class
