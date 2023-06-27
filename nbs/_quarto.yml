@@ -3,7 +3,7 @@ project:
 
 format:
   html:
-    theme: cosmo
+    theme: pulse
     css: styles.css
     toc: true
 
@@ -14,7 +14,13 @@ website:
   navbar:
     background: primary
     search: true
+    right:
+      - icon: github
+        href: https://github.com/Arcascope/circadian
+      - icon: twitter
+        href: https://twitter.com/arcascope
   sidebar:
     style: floating
+  favicon: favicon.png
   
 metadata-files: [nbdev.yml, sidebar.yml]

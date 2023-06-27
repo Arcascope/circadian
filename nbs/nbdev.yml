@@ -2,7 +2,7 @@ project:
   output-dir: _docs
 
 website:
-  title: "circadian"
+  title: "circadian by Arcascope"
   site-url: "https://arcascope.github.io/circadian//circadian"
   description: "Tools for the simulation and analysis of circadian rhythms"
   repo-branch: main

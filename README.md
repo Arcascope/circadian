@@ -35,9 +35,8 @@ See all the available models at
 Additionally, `circadian` provides a set of tools for simulating and
 analzying circadian rhythms:
 
-- Define light schedules using the
-  [`Light`](https://arcascope.github.io/circadian/lights.html#light)
-  class and feed directly into the models
+- Define light schedules using the `Light` class and feed directly into
+  the models
 - Calculate phase response curves using the
   [`PRCFinder`](https://arcascope.github.io/circadian/prc.html#prcfinder)
   class
