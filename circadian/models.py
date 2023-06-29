@@ -378,7 +378,8 @@ def amplitude(self,
 # %% ../nbs/00_models.ipynb 38
 @patch_to(CircadianModel)
 def phase(self,
-          time: float # timepoint to calculate the phase at
+          trajectory: DynamicalTrajectory, 
+          time: float=None # timepoint to calculate the phase at. If None, the phase is calculated for the entire trajectory
           ) -> float:
     "Calculates the phase of the model at a given timepoint"
     raise NotImplementedError("phase is not implemented for this model")
@@ -463,11 +464,25 @@ def derv(self,
 # %% ../nbs/00_models.ipynb 47
 @patch_to(Forger99)
 def phase(self,
-          time: float # a time point to calculate the phase at
+          trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase. If None, the current trajectory is used
+          time: float=None # a time point to calculate the phase at. If None, the phase is calculated for the entire trajectory
           ) -> float:
-    state = self.trajectory(time)
-    x = state[0] 
-    y = -1.0 * state[1]
+    if trajectory is None:
+        trajectory = self.trajectory
+    else: 
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    if time is None:
+        time = trajectory.time
+        x = trajectory.states[:, 0]
+        y = -1.0 * trajectory.states[:, 1]
+    else:
+        if not isinstance(time, (float, int)):
+            raise ValueError("time must be a float or an int")
+        else:
+            state = self.trajectory(time)
+            x = state[0] 
+            y = -1.0 * state[1]
     return np.angle(x + complex(0,1) * y)
 
 # %% ../nbs/00_models.ipynb 49
@@ -559,11 +574,25 @@ def derv(self,
 # %% ../nbs/00_models.ipynb 62
 @patch_to(Hannay19)
 def phase(self,
-          time: float # a time point to calculate the phase at
+          trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase. If None, the current trajectory is used
+          time: float=None # a time point to calculate the phase at. If None, the phase is calculated for the entire trajectory
           ) -> float:
-    state = self.trajectory(time)
-    x = np.cos(state[1])
-    y = np.sin(state[1])
+    if trajectory is None:
+        trajectory = self.trajectory
+    else: 
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    if time is None:
+        time = trajectory.time
+        x = np.cos(trajectory.states[:, 1])
+        y = np.sin(trajectory.states[:, 1])
+    else:
+        if not isinstance(time, (float, int)):
+            raise ValueError("time must be a float or an int")
+        else:
+            state = self.trajectory(time)
+            x = np.cos(state[1])
+            y = np.sin(state[1])
     return np.angle(x + complex(0,1) * y)
 
 # %% ../nbs/00_models.ipynb 64
@@ -661,12 +690,26 @@ def derv(self,
 # %% ../nbs/00_models.ipynb 77
 @patch_to(Hannay19TP)
 def phase(self,
-          time: float # a time point to calculate the phase at
+          trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase. If None, the current trajectory is used
+          time: float=None # a time point to calculate the phase at. If None, the phase is calculated for the entire trajectory
           ) -> float:
-        state = self.trajectory(time)
-        x = np.cos(state[2])
-        y = np.sin(state[2])
-        return np.angle(x + complex(0,1) * y)
+    if trajectory is None:
+        trajectory = self.trajectory
+    else: 
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    if time is None:
+        time = trajectory.time
+        x = np.cos(trajectory.states[:, 2])
+        y = np.sin(trajectory.states[:, 2])
+    else:
+        if not isinstance(time, (float, int)):
+            raise ValueError("time must be a float or an int")
+        else:
+            state = self.trajectory(time)
+            x = np.cos(state[2])
+            y = np.sin(state[2])
+    return np.angle(x + complex(0,1) * y)
 
 # %% ../nbs/00_models.ipynb 79
 @patch_to(Hannay19TP)
@@ -751,12 +794,26 @@ def derv(self,
 # %% ../nbs/00_models.ipynb 92
 @patch_to(Jewett99)
 def phase(self,
-          time: float # a time point to calculate the phase at
+          trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase. If None, the current trajectory is used
+          time: float=None # a time point to calculate the phase at. If None, the phase is calculated for the entire trajectory
           ) -> float:
-        state = self.trajectory(time)
-        x = state[0] 
-        y = -1.0 * state[1]
-        return np.angle(x + complex(0,1) * y)
+    if trajectory is None:
+        trajectory = self.trajectory
+    else: 
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    if time is None:
+        time = trajectory.time
+        x = trajectory.states[:, 0]
+        y = -1.0 * trajectory.states[:, 1]
+    else:
+        if not isinstance(time, (float, int)):
+            raise ValueError("time must be a float or an int")
+        else:
+            state = self.trajectory(time)
+            x = state[0] 
+            y = -1.0 * state[1]
+    return np.angle(x + complex(0,1) * y)
 
 # %% ../nbs/00_models.ipynb 94
 @patch_to(Jewett99)
