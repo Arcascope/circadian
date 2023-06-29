@@ -357,32 +357,37 @@ def get_parameters_array(self)-> np.array:
 
 # %% ../nbs/00_models.ipynb 35
 @patch_to(CircadianModel)
-def dlmos(self) -> np.ndarray: # array of times when dlmo occurs 
-    "Finds the Dim Light Melatonin Onset (DLMO) markers along a trajectory"
-    raise NotImplementedError("dlmo is not implemented for this model")
-
-# %% ../nbs/00_models.ipynb 36
-@patch_to(CircadianModel)
-def cbt(self) -> np.ndarray: # array of times when the cbt occurs
-    "Finds the core body temperature minumum markers along a trajectory"
-    raise NotImplementedError("cbt is not implemented for this model")
-
-# %% ../nbs/00_models.ipynb 37
-@patch_to(CircadianModel)
-def amplitude(self,
-              time: float, # timepoint to calculate the amplitude at
-              ) -> float:
-    "Calculates the amplitude of the model at a given timepoint"
-    raise NotImplementedError("amplitude is not implemented for this model")
-
-# %% ../nbs/00_models.ipynb 38
-@patch_to(CircadianModel)
 def phase(self,
-          trajectory: DynamicalTrajectory, 
+          trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase for. If None, the phase is calculated for the current trajectory 
           time: float=None # timepoint to calculate the phase at. If None, the phase is calculated for the entire trajectory
           ) -> float:
     "Calculates the phase of the model at a given timepoint"
     raise NotImplementedError("phase is not implemented for this model")
+
+# %% ../nbs/00_models.ipynb 36
+@patch_to(CircadianModel)
+def amplitude(self,
+              trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude for. If None, the amplitude is calculated for the current trajectory 
+              time: float=None, # timepoint to calculate the amplitude at. If None, the amplitude is calculated for the entire trajectory
+              ) -> float:
+    "Calculates the amplitude of the model at a given timepoint"
+    raise NotImplementedError("amplitude is not implemented for this model")
+
+# %% ../nbs/00_models.ipynb 37
+@patch_to(CircadianModel)
+def cbt(self,
+        trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt for. If None, the cbt is calculated for the current trajectory
+        ) -> np.ndarray: # array of times when the cbt occurs
+    "Finds the core body temperature minumum markers along a trajectory"
+    raise NotImplementedError("cbt is not implemented for this model")
+
+# %% ../nbs/00_models.ipynb 38
+@patch_to(CircadianModel)
+def dlmos(self,
+          trajectory: DynamicalTrajectory=None, # trajectory to calculate the dlmos for. If None, the dlmos are calculated for the current trajectory
+          ) -> np.ndarray: # array of times when dlmo occurs 
+    "Finds the Dim Light Melatonin Onset (DLMO) markers along a trajectory"
+    raise NotImplementedError("dlmo is not implemented for this model")
 
 # %% ../nbs/00_models.ipynb 39
 @patch_to(CircadianModel)
@@ -473,7 +478,6 @@ def phase(self,
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     if time is None:
-        time = trajectory.time
         x = trajectory.states[:, 0]
         y = -1.0 * trajectory.states[:, 1]
     else:
@@ -488,25 +492,53 @@ def phase(self,
 # %% ../nbs/00_models.ipynb 49
 @patch_to(Forger99)
 def amplitude(self,
-              time: float # a time point to calculate the amplitude at
+              trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude. If None, the current trajectory is used
+              time: float=None # a time point to calculate the amplitude at. If None, the amplitude is calculated for the entire trajectory
               ) -> float:
-    "Calculates the amplitude of the model at a given time"
-    state = self.trajectory(time)
-    return np.sqrt(state[0] ** 2 + state[1] ** 2)
+    if trajectory is None:
+        trajectory = self.trajectory
+    else: 
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    if time is None:
+        x = trajectory.states[:, 0]
+        y = -1.0 * trajectory.states[:, 1]
+    else:
+        if not isinstance(time, (float, int)):
+            raise ValueError("time must be a float or an int")
+        else:
+            state = trajectory(time)
+            x = state[0] 
+            y = -1.0 * state[1]
+    return np.sqrt(x**2 + y**2)
 
 # %% ../nbs/00_models.ipynb 51
 @patch_to(Forger99)
-def cbt(self) -> np.ndarray:
+def cbt(self,
+        trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
+        ) -> np.ndarray:
     "Finds the core body temperature minumum markers for the model along a trajectory as the minimum of x"
-    inverted_x = -1*self._trajectory.states[:,0]
-    cbt_min_idxs = find_peaks(inverted_x)[0]
-    return self._trajectory.time[cbt_min_idxs]
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    inverted_x = -1*trajectory.states[:,0]
+    cbt_min_idxs, _ = find_peaks(inverted_x)
+    return trajectory.time[cbt_min_idxs]
 
 # %% ../nbs/00_models.ipynb 53
 @patch_to(Forger99)
-def dlmos(self) -> np.ndarray:
+def dlmos(self,
+          trajectory: DynamicalTrajectory=None, # trajectory to calculate the dlmo. If None, the current trajectory is used 
+          ) -> np.ndarray:
     "Finds the Dim Light Melatonin Onset (DLMO) markers for the model along a trajectory"
-    return self.cbt() - self.cbt_to_dlmo
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    return self.cbt(trajectory) - self.cbt_to_dlmo
 
 # %% ../nbs/00_models.ipynb 57
 class Hannay19(CircadianModel):
@@ -583,7 +615,6 @@ def phase(self,
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     if time is None:
-        time = trajectory.time
         x = np.cos(trajectory.states[:, 1])
         y = np.sin(trajectory.states[:, 1])
     else:
@@ -598,25 +629,51 @@ def phase(self,
 # %% ../nbs/00_models.ipynb 64
 @patch_to(Hannay19)
 def amplitude(self,
-              time: float # a time point to calculate the amplitude at
+              trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude. If None, the current trajectory is used
+              time: float=None # a time point to calculate the amplitude at. If None, the amplitude is calculated for the entire trajectory
               ) -> float:
-    "Calculates the amplitude of the model at a given time"
-    state = self.trajectory(time)
-    return state[0]
+    if trajectory is None:
+        trajectory = self.trajectory
+    else: 
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    if time is None:
+        amplitude = trajectory.states[:, 0]
+    else:
+        if not isinstance(time, (float, int)):
+            raise ValueError("time must be a float or an int")
+        else:
+            state = trajectory(time)
+            amplitude = state[0] 
+    return amplitude
 
 # %% ../nbs/00_models.ipynb 66
 @patch_to(Hannay19)
-def cbt(self) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the places where the phase is pi"
-    inverted_x = -np.cos(self._trajectory.states[:,1])
-    cbt_min_idxs = find_peaks(inverted_x)[0]
-    return self._trajectory.time[cbt_min_idxs]
+def cbt(self,
+        trajectory: DynamicalTrajectory=None # trajectory to calculate the cbt. If None, the current trajectory is used
+        ) -> np.ndarray:
+    "Finds the core body temperature minumum markers for the model along a trajectory as the times where the phase is pi"
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    inverted_x = -np.cos(trajectory.states[:,1])
+    cbt_min_idxs, _ = find_peaks(inverted_x)
+    return trajectory.time[cbt_min_idxs]
 
 # %% ../nbs/00_models.ipynb 68
 @patch_to(Hannay19)
-def dlmos(self) -> np.ndarray:
+def dlmos(self,
+          trajectory: DynamicalTrajectory=None # trajectory to calculate the dlmo. If None, the current trajectory is used
+          ) -> np.ndarray:
     "Finds the Dim Light Melatonin Onset (DLMO) markers for the model along a trajectory"
-    return self.cbt() - self.cbt_to_dlmo
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    return self.cbt(trajectory) - self.cbt_to_dlmo
 
 # %% ../nbs/00_models.ipynb 72
 class Hannay19TP(CircadianModel):
@@ -714,25 +771,52 @@ def phase(self,
 # %% ../nbs/00_models.ipynb 79
 @patch_to(Hannay19TP)
 def amplitude(self,
-              time: float # a time point to calculate the amplitude at
+              trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude. If None, the current trajectory is used
+              time: float=None # a time point to calculate the amplitude at. If None, the amplitude is calculated for the entire trajectory
               ) -> float:
-        "Calculates the amplitude of the model at a given time"
-        state = self.trajectory(time)
-        return state[0]
+    if trajectory is None:
+        trajectory = self.trajectory
+    else: 
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    if time is None:
+        time = trajectory.time
+        amplitude = trajectory.states[:, 0]
+    else:
+        if not isinstance(time, (float, int)):
+            raise ValueError("time must be a float or an int")
+        else:
+            state = trajectory(time)
+            amplitude = state[0] 
+    return amplitude
 
 # %% ../nbs/00_models.ipynb 81
 @patch_to(Hannay19TP)
-def cbt(self) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the places where the phase is pi"
-    inverted_x = -np.cos(self._trajectory.states[:,2])
-    cbt_min_idxs = find_peaks(inverted_x)[0]
-    return self._trajectory.time[cbt_min_idxs]
+def cbt(self,
+        trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
+        ) -> np.ndarray:
+    "Finds the core body temperature minumum markers for the model along a trajectory as the times where the phase is pi"
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    inverted_x = -np.cos(trajectory.states[:,2])
+    cbt_min_idxs, _ = find_peaks(inverted_x)
+    return trajectory.time[cbt_min_idxs]
 
 # %% ../nbs/00_models.ipynb 83
 @patch_to(Hannay19TP)
-def dlmos(self) -> np.ndarray:
+def dlmos(self,
+          trajectory: DynamicalTrajectory=None # trajectory to calculate the dlmo. If None, the current trajectory is used
+          ) -> np.ndarray:
     "Finds the Dim Light Melatonin Onset (DLMO) markers for the model along a trajectory"
-    return self.cbt() - self.cbt_to_dlmo
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    return self.cbt(trajectory) - self.cbt_to_dlmo
 
 # %% ../nbs/00_models.ipynb 87
 class Jewett99(CircadianModel):
@@ -803,7 +887,6 @@ def phase(self,
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     if time is None:
-        time = trajectory.time
         x = trajectory.states[:, 0]
         y = -1.0 * trajectory.states[:, 1]
     else:
@@ -818,22 +901,50 @@ def phase(self,
 # %% ../nbs/00_models.ipynb 94
 @patch_to(Jewett99)
 def amplitude(self,
-              time: float # a time point to calculate the amplitude at
+              trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude. If None, the current trajectory is used
+              time: float=None # a time point to calculate the amplitude at. If None, the amplitude is calculated for the entire trajectory
               ) -> float:
-    "Calculates the amplitude of the model at a given time"
-    state = self.trajectory(time)
-    return np.sqrt(state[0] ** 2 + state[1] ** 2)
+    if trajectory is None:
+        trajectory = self.trajectory
+    else: 
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    if time is None:
+        x = trajectory.states[:, 0]
+        y = -1.0 * trajectory.states[:, 1]
+    else:
+        if not isinstance(time, (float, int)):
+            raise ValueError("time must be a float or an int")
+        else:
+            state = trajectory(time)
+            x = state[0] 
+            y = -1.0 * state[1]
+    return np.sqrt(x**2 + y**2)
 
 # %% ../nbs/00_models.ipynb 96
 @patch_to(Jewett99)
-def cbt(self) -> np.ndarray:
+def cbt(self,
+        trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
+        ) -> np.ndarray:
     "Finds the core body temperature minumum markers for the model along a trajectory as the corrected minimum of x"
-    inverted_x = -1*self._trajectory.states[:,0]
-    cbt_min_idxs = find_peaks(inverted_x)[0]
-    return self._trajectory.time[cbt_min_idxs] + self.phi_ref
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    inverted_x = -1*trajectory.states[:,0]
+    cbt_min_idxs, _ = find_peaks(inverted_x)
+    return trajectory.time[cbt_min_idxs] + self.phi_ref
 
 # %% ../nbs/00_models.ipynb 98
 @patch_to(Jewett99)
-def dlmos(self) -> np.ndarray:
+def dlmos(self,
+          trajectory: DynamicalTrajectory=None # trajectory to calculate the dlmo. If None, the current trajectory is used
+          ) -> np.ndarray:
     "Finds the Dim Light Melatonin Onset (DLMO) markers for the model along a trajectory"
-    return self.cbt() - self.cbt_to_dlmo
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    return self.cbt(trajectory) - self.cbt_to_dlmo
