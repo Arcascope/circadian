@@ -480,7 +480,7 @@ def phase(self,
         if not isinstance(time, (float, int)):
             raise ValueError("time must be a float or an int")
         else:
-            state = self.trajectory(time)
+            state = trajectory(time)
             x = state[0] 
             y = -1.0 * state[1]
     return np.angle(x + complex(0,1) * y)
@@ -590,7 +590,7 @@ def phase(self,
         if not isinstance(time, (float, int)):
             raise ValueError("time must be a float or an int")
         else:
-            state = self.trajectory(time)
+            state = trajectory(time)
             x = np.cos(state[1])
             y = np.sin(state[1])
     return np.angle(x + complex(0,1) * y)
@@ -706,7 +706,7 @@ def phase(self,
         if not isinstance(time, (float, int)):
             raise ValueError("time must be a float or an int")
         else:
-            state = self.trajectory(time)
+            state = trajectory(time)
             x = np.cos(state[2])
             y = np.sin(state[2])
     return np.angle(x + complex(0,1) * y)
@@ -810,7 +810,7 @@ def phase(self,
         if not isinstance(time, (float, int)):
             raise ValueError("time must be a float or an int")
         else:
-            state = self.trajectory(time)
+            state = trajectory(time)
             x = state[0] 
             y = -1.0 * state[1]
     return np.angle(x + complex(0,1) * y)
