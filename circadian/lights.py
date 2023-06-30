@@ -142,7 +142,7 @@ class LightSchedule:
             return np.piecewise(time, conditions, values)
         return cls(fn, period=period)
 
-# %% ../nbs/api/01_lights.ipynb 9
+# %% ../nbs/api/01_lights.ipynb 6
 @patch_to(LightSchedule)
 def __add__(self, 
             schedule: 'LightSchedule' # another LightSchedule object 
@@ -157,7 +157,7 @@ def __add__(self,
     lux = lambda t: fn_1(t) + fn_2(t)
     return LightSchedule(lux)
 
-# %% ../nbs/api/01_lights.ipynb 11
+# %% ../nbs/api/01_lights.ipynb 7
 @patch_to(LightSchedule)
 def __sub__(self,
             schedule: 'LightSchedule' # another LightSchedule object
@@ -172,7 +172,7 @@ def __sub__(self,
     lux = lambda t: fn_1(t) - fn_2(t)
     return LightSchedule(lux)
 
-# %% ../nbs/api/01_lights.ipynb 13
+# %% ../nbs/api/01_lights.ipynb 8
 @patch_to(LightSchedule)
 def concatenate_at(self,
                    schedule : 'LightSchedule', # another LightSchedule object
@@ -210,7 +210,7 @@ def concatenate_at(self,
         return np.piecewise(t, conditions, values)
     return LightSchedule(fn)
 
-# %% ../nbs/api/01_lights.ipynb 15
+# %% ../nbs/api/01_lights.ipynb 9
 @patch_to(LightSchedule)
 def plot(self, 
          plot_start_time: float, # start time of the plot in hours
@@ -242,7 +242,7 @@ def plot(self,
     ax.plot(t, vals, *args, **kwargs)
     return ax
 
-# %% ../nbs/api/01_lights.ipynb 20
+# %% ../nbs/api/01_lights.ipynb 10
 @patch_to(LightSchedule)
 def Regular(lux: float=150.0, # intensity of the light in lux
             lights_on: float=7.0, # time of the day for lights to come on in hours
@@ -273,7 +273,7 @@ def Regular(lux: float=150.0, # intensity of the light in lux
     elif lights_off == lights_on:
         raise ValueError("lights_off and lights_on cannot be equal")
 
-# %% ../nbs/api/01_lights.ipynb 22
+# %% ../nbs/api/01_lights.ipynb 11
 @patch_to(LightSchedule)
 def ShiftWork(lux: float=150.0, # lux intensity of the light. Must be a nonnegative float or int
               days_on: int=5, # number of days on the night shift. Must be a positive int
@@ -344,7 +344,7 @@ def ShiftWork(lux: float=150.0, # lux intensity of the light. Must be a nonnegat
     final_schedule = LightSchedule(total_schedule, period=workweek_period)
     return final_schedule
 
-# %% ../nbs/api/01_lights.ipynb 24
+# %% ../nbs/api/01_lights.ipynb 12
 @patch_to(LightSchedule)
 def SlamShift(lux: float=150.0, # intensity of the light in lux
               shift: float=8.0, # shift in the light schedule in hours
@@ -388,7 +388,7 @@ def SlamShift(lux: float=150.0, # intensity of the light in lux
     final_schedule = final_schedule.concatenate_at(schedule_after, first_lights_on_after, shift_schedule=False)
     return final_schedule
 
-# %% ../nbs/api/01_lights.ipynb 26
+# %% ../nbs/api/01_lights.ipynb 13
 @patch_to(LightSchedule)
 def SocialJetlag(lux: float=150.0, # intensity of the light in lux
                  num_regular_days: int=5, # number of days with a regular schedule
