@@ -4,6 +4,7 @@
 __all__ = ['DynamicalTrajectory', 'CircadianModel', 'Forger99', 'Hannay19', 'Hannay19TP', 'Jewett99']
 
 # %% ../nbs/00_models.ipynb 4
+import warnings
 import numpy as np
 from abc import ABC
 from typing import Tuple
@@ -217,7 +218,8 @@ class CircadianModel(ABC):
         self.__default_initial_condition = default_initial_condition
         self._trajectory = None
         self._initial_condition = default_initial_condition
-    
+
+
     @property
     def parameters(self) -> dict:
         return self._parameters
@@ -403,13 +405,45 @@ def equilibrate(self,
     _positive_int_checking(num_loops, "num_loops")
     
     initial_condition = self._default_initial_condition
+    dlmos = []
     for _ in range(num_loops):
         sol = self.integrate(time, initial_condition, input).states
+        dlmos.append(self.dlmos())
         initial_condition = sol[-1, ...]
+    # check that the output is equilibrated
+    is_equilibrated = np.all(np.isclose(dlmos[-1][-1], dlmos[-2][-1], atol=1e-3))
+    if not is_equilibrated:
+        warnings.warn("The model did not equilibrate. Try increasing the number of loops.")
     final_state = sol[-1, ...]
     return final_state
 
-# %% ../nbs/00_models.ipynb 42
+# %% ../nbs/00_models.ipynb 41
+def _get_default_initial_condition(
+        model: CircadianModel, # model to calculate the default initial condition for
+        num_loops: int=10 # number of times to loop the regular schedule
+        ) -> np.ndarray:
+    "Calculates a default initial condition by simulating the given model on a 16 hour light, 8 hour darkness schedule until convergence"
+    # input checking
+    if not isinstance(model, CircadianModel):
+        raise TypeError("model must be a CircadianModel")
+    model._default_initial_condition = 0.5 * np.ones(model._num_states)
+    schedule = LightSchedule.Regular(lights_on=8, lights_off=24)    
+    time = np.arange(0.0, 24.0, 0.1)
+    light_input = schedule(time)
+    default_initial_condition = model.equilibrate(time, light_input, num_loops)
+    return default_initial_condition
+
+def _check_cbtmin_spacing(
+        cbtmin_times: np.ndarray, # array of times when the cbtmin occurs
+        min_spacing: float=6.0, # minimum spacing between cbtmin markers
+        ) -> bool:
+    "Checks if the spacing between cbtmin markers is valid"
+    cbtmin_spacing = np.diff(cbtmin_times)
+    if np.any(cbtmin_spacing < min_spacing):
+        # raise a warning
+        warnings.warn(f"The data contains cbtmin markers that are spaced by less than {min_spacing} hours. Removal of duplicate cbtmin markers is recommended.")
+
+# %% ../nbs/00_models.ipynb 44
 class Forger99(CircadianModel): 
     "Implementation of Forger's 1999 model from the article 'A simpler model of the human circadian pacemaker'"
     def __init__(self, params=None):
@@ -420,7 +454,7 @@ class Forger99(CircadianModel):
             }
         num_states = 3 # x, xc, n
         num_inputs = 1 # light
-        default_initial_condition = np.array([-1.00982605,  0.00125715,  0.0])
+        default_initial_condition = np.array([-0.0843259, -1.09607546, 0.45584306]) # condition at midnight for 16L, 8D schedule
         super(Forger99, self).__init__(default_params, num_states, num_inputs, default_initial_condition)
         if params is not None:
             self.parameters = params
@@ -442,7 +476,7 @@ class Forger99(CircadianModel):
     def __str__(self) -> str:
         return "Forger99"
 
-# %% ../nbs/00_models.ipynb 45
+# %% ../nbs/00_models.ipynb 47
 @patch_to(Forger99)
 def derv(self, 
          state: np.ndarray, # dynamical state (x, xc, n)
@@ -466,7 +500,7 @@ def derv(self,
 
      return dydt
 
-# %% ../nbs/00_models.ipynb 47
+# %% ../nbs/00_models.ipynb 49
 @patch_to(Forger99)
 def phase(self,
           trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase. If None, the current trajectory is used
@@ -489,7 +523,7 @@ def phase(self,
             y = -1.0 * state[1]
     return np.angle(x + complex(0,1) * y)
 
-# %% ../nbs/00_models.ipynb 49
+# %% ../nbs/00_models.ipynb 51
 @patch_to(Forger99)
 def amplitude(self,
               trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude. If None, the current trajectory is used
@@ -512,7 +546,7 @@ def amplitude(self,
             y = -1.0 * state[1]
     return np.sqrt(x**2 + y**2)
 
-# %% ../nbs/00_models.ipynb 51
+# %% ../nbs/00_models.ipynb 53
 @patch_to(Forger99)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
@@ -525,9 +559,11 @@ def cbt(self,
             raise ValueError("trajectory must be a DynamicalTrajectory")
     inverted_x = -1*trajectory.states[:,0]
     cbt_min_idxs, _ = find_peaks(inverted_x)
-    return trajectory.time[cbt_min_idxs]
+    cbtmin_times = trajectory.time[cbt_min_idxs]
+    _check_cbtmin_spacing(cbtmin_times)
+    return cbtmin_times
 
-# %% ../nbs/00_models.ipynb 53
+# %% ../nbs/00_models.ipynb 55
 @patch_to(Forger99)
 def dlmos(self,
           trajectory: DynamicalTrajectory=None, # trajectory to calculate the dlmo. If None, the current trajectory is used 
@@ -540,7 +576,7 @@ def dlmos(self,
             raise ValueError("trajectory must be a DynamicalTrajectory")
     return self.cbt(trajectory) - self.cbt_to_dlmo
 
-# %% ../nbs/00_models.ipynb 57
+# %% ../nbs/00_models.ipynb 60
 class Hannay19(CircadianModel):
     "Implementation of Hannay's 2019 single population model from the article 'Macroscopic models for human circadian rhythms'"
     def __init__(self, params=None):
@@ -552,7 +588,7 @@ class Hannay19(CircadianModel):
             'cbt_to_dlmo': 7.0}
         num_states = 3 # R, Psi, n
         num_inputs = 1 # light
-        default_initial_condition = np.array([0.70120406, 2.32206690, 0.0])
+        default_initial_condition = np.array([0.82041911, 1.71383697, 0.52318122]) # condition at midnight for 16L, 8D schedule
         super(Hannay19, self).__init__(default_params, num_states, num_inputs, default_initial_condition)
         if params is not None:
             self.parameters = params
@@ -574,7 +610,7 @@ class Hannay19(CircadianModel):
     def __str__(self) -> str:
         return "Hannay19"
 
-# %% ../nbs/00_models.ipynb 60
+# %% ../nbs/00_models.ipynb 63
 @patch_to(Hannay19)
 def derv(self,
          state: np.ndarray, # dynamical state (R, Psi, n)
@@ -603,7 +639,7 @@ def derv(self,
 
     return dydt
 
-# %% ../nbs/00_models.ipynb 62
+# %% ../nbs/00_models.ipynb 65
 @patch_to(Hannay19)
 def phase(self,
           trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase. If None, the current trajectory is used
@@ -626,7 +662,7 @@ def phase(self,
             y = np.sin(state[1])
     return np.angle(x + complex(0,1) * y)
 
-# %% ../nbs/00_models.ipynb 64
+# %% ../nbs/00_models.ipynb 67
 @patch_to(Hannay19)
 def amplitude(self,
               trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude. If None, the current trajectory is used
@@ -647,7 +683,7 @@ def amplitude(self,
             amplitude = state[0] 
     return amplitude
 
-# %% ../nbs/00_models.ipynb 66
+# %% ../nbs/00_models.ipynb 69
 @patch_to(Hannay19)
 def cbt(self,
         trajectory: DynamicalTrajectory=None # trajectory to calculate the cbt. If None, the current trajectory is used
@@ -660,9 +696,11 @@ def cbt(self,
             raise ValueError("trajectory must be a DynamicalTrajectory")
     inverted_x = -np.cos(trajectory.states[:,1])
     cbt_min_idxs, _ = find_peaks(inverted_x)
-    return trajectory.time[cbt_min_idxs]
+    cbtmin_times = trajectory.time[cbt_min_idxs]
+    _check_cbtmin_spacing(cbtmin_times)
+    return cbtmin_times
 
-# %% ../nbs/00_models.ipynb 68
+# %% ../nbs/00_models.ipynb 71
 @patch_to(Hannay19)
 def dlmos(self,
           trajectory: DynamicalTrajectory=None # trajectory to calculate the dlmo. If None, the current trajectory is used
@@ -675,7 +713,7 @@ def dlmos(self,
             raise ValueError("trajectory must be a DynamicalTrajectory")
     return self.cbt(trajectory) - self.cbt_to_dlmo
 
-# %% ../nbs/00_models.ipynb 72
+# %% ../nbs/00_models.ipynb 76
 class Hannay19TP(CircadianModel):
     "Implementation of Hannay's 2019 two population model from the article 'Macroscopic models for human circadian rhythms'"
     def __init__(self, params=None):
@@ -689,7 +727,7 @@ class Hannay19TP(CircadianModel):
             }
         num_states = 5 # Rv, Rd, Psiv, Psid, n
         num_inputs = 1 # light
-        default_initial_condition = np.array([1.0, 1.0, 0.0, 0.10, 0.0])
+        default_initial_condition = np.array([0.82423745, 0.82304996, 1.75233424, 1.863457, 0.52318122]) # condition at midnight for 16L, 8D schedule
         super(Hannay19TP, self).__init__(default_params, num_states, num_inputs, default_initial_condition)
         if params is not None:
             self.parameters = params
@@ -711,7 +749,7 @@ class Hannay19TP(CircadianModel):
     def __str__(self) -> str:
         return "Hannay19TP"
 
-# %% ../nbs/00_models.ipynb 75
+# %% ../nbs/00_models.ipynb 79
 @patch_to(Hannay19TP)
 def derv(self,
          state: np.ndarray, # dynamical state (Rv, Rd, Psiv, Psid, n)
@@ -744,7 +782,7 @@ def derv(self,
 
      return dydt
 
-# %% ../nbs/00_models.ipynb 77
+# %% ../nbs/00_models.ipynb 81
 @patch_to(Hannay19TP)
 def phase(self,
           trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase. If None, the current trajectory is used
@@ -768,7 +806,7 @@ def phase(self,
             y = np.sin(state[2])
     return np.angle(x + complex(0,1) * y)
 
-# %% ../nbs/00_models.ipynb 79
+# %% ../nbs/00_models.ipynb 83
 @patch_to(Hannay19TP)
 def amplitude(self,
               trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude. If None, the current trajectory is used
@@ -790,7 +828,7 @@ def amplitude(self,
             amplitude = state[0] 
     return amplitude
 
-# %% ../nbs/00_models.ipynb 81
+# %% ../nbs/00_models.ipynb 85
 @patch_to(Hannay19TP)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
@@ -803,9 +841,11 @@ def cbt(self,
             raise ValueError("trajectory must be a DynamicalTrajectory")
     inverted_x = -np.cos(trajectory.states[:,2])
     cbt_min_idxs, _ = find_peaks(inverted_x)
-    return trajectory.time[cbt_min_idxs]
+    cbtmin_times = trajectory.time[cbt_min_idxs]
+    _check_cbtmin_spacing(cbtmin_times)
+    return cbtmin_times
 
-# %% ../nbs/00_models.ipynb 83
+# %% ../nbs/00_models.ipynb 87
 @patch_to(Hannay19TP)
 def dlmos(self,
           trajectory: DynamicalTrajectory=None # trajectory to calculate the dlmo. If None, the current trajectory is used
@@ -818,7 +858,7 @@ def dlmos(self,
             raise ValueError("trajectory must be a DynamicalTrajectory")
     return self.cbt(trajectory) - self.cbt_to_dlmo
 
-# %% ../nbs/00_models.ipynb 87
+# %% ../nbs/00_models.ipynb 92
 class Jewett99(CircadianModel):
     "Implementation of Jewett's 1999 model from the article 'Revised Limit Cycle Oscillator Model of Human Circadian Pacemaker'"
     def __init__(self, params=None):
@@ -829,7 +869,7 @@ class Jewett99(CircadianModel):
             'phi_ref': 0.8, 'cbt_to_dlmo': 7.0}
         num_states = 3 # x, xc, n
         num_inputs = 1 # light
-        default_initial_condition = np.array([-0.3, -1.13, 0.0])
+        default_initial_condition = np.array([-0.10097101, -1.21985662, 0.50529415]) # condition at midnight for 16L, 8D schedule
         super(Jewett99, self).__init__(default_params, num_states, num_inputs, default_initial_condition)
         if params is not None:
             self.parameters = params
@@ -851,7 +891,7 @@ class Jewett99(CircadianModel):
     def __str__(self) -> str:
         return "Jewett99"
 
-# %% ../nbs/00_models.ipynb 90
+# %% ../nbs/00_models.ipynb 95
 @patch_to(Jewett99)
 def derv(self,
          state: np.ndarray, # dynamical state (x, xc, n)
@@ -875,7 +915,7 @@ def derv(self,
     
     return dydt
 
-# %% ../nbs/00_models.ipynb 92
+# %% ../nbs/00_models.ipynb 97
 @patch_to(Jewett99)
 def phase(self,
           trajectory: DynamicalTrajectory=None, # trajectory to calculate the phase. If None, the current trajectory is used
@@ -898,7 +938,7 @@ def phase(self,
             y = -1.0 * state[1]
     return np.angle(x + complex(0,1) * y)
 
-# %% ../nbs/00_models.ipynb 94
+# %% ../nbs/00_models.ipynb 99
 @patch_to(Jewett99)
 def amplitude(self,
               trajectory: DynamicalTrajectory=None, # trajectory to calculate the amplitude. If None, the current trajectory is used
@@ -921,7 +961,7 @@ def amplitude(self,
             y = -1.0 * state[1]
     return np.sqrt(x**2 + y**2)
 
-# %% ../nbs/00_models.ipynb 96
+# %% ../nbs/00_models.ipynb 101
 @patch_to(Jewett99)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
@@ -934,9 +974,11 @@ def cbt(self,
             raise ValueError("trajectory must be a DynamicalTrajectory")
     inverted_x = -1*trajectory.states[:,0]
     cbt_min_idxs, _ = find_peaks(inverted_x)
-    return trajectory.time[cbt_min_idxs] + self.phi_ref
+    cbtmin_times = trajectory.time[cbt_min_idxs] + self.phi_ref
+    _check_cbtmin_spacing(cbtmin_times)
+    return cbtmin_times
 
-# %% ../nbs/00_models.ipynb 98
+# %% ../nbs/00_models.ipynb 103
 @patch_to(Jewett99)
 def dlmos(self,
           trajectory: DynamicalTrajectory=None # trajectory to calculate the dlmo. If None, the current trajectory is used
