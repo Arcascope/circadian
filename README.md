@@ -22,13 +22,13 @@ pip install circadian
 The `circadian` package implements key mathematical models in the field
 such as:
 
-- [`Forger99`](https://arcascope.github.io/circadian/models.html#forger99) -
+- [`Forger99`](https://arcascope.github.io/circadian/api/models.html#forger99) -
   [Forger et al. (1999)](https://doi.org/10.1177/074873099129000867)
-- [`Hannay19`](https://arcascope.github.io/circadian/models.html#hannay19)
+- [`Hannay19`](https://arcascope.github.io/circadian/api/models.html#hannay19)
   and
-  [`Hannay19TP`](https://arcascope.github.io/circadian/models.html#hannay19tp) -
+  [`Hannay19TP`](https://arcascope.github.io/circadian/api/models.html#hannay19tp) -
   [Hannay et al. (2019)](https://doi.org/10.1177/0748730419878298)
-- [`Jewett99`](https://arcascope.github.io/circadian/models.html#jewett99) -
+- [`Jewett99`](https://arcascope.github.io/circadian/api/models.html#jewett99) -
   [Kronauer et al. (1999)](https://doi.org/10.1177/074873049901400608)
 
 See all the available models at
@@ -40,7 +40,7 @@ analzying circadian rhythms:
 - Define light schedules using the `Light` class and feed directly into
   the models
 - Calculate phase response curves using the
-  [`PRCFinder`](https://arcascope.github.io/circadian/prc.html#prcfinder)
+  [`PRCFinder`](https://arcascope.github.io/circadian/api/prc.html#prcfinder)
   class
 - Generate actograms and phase plots with the `circadian.plots` module
 
@@ -105,7 +105,7 @@ dlmo_tpm = tpm_model.dlmos()
 
 Lastly, the results of the simulation–DLMOs included– are visualized in
 an
-[`Actogram`](https://arcascope.github.io/circadian/plots.html#actogram)
+[`Actogram`](https://arcascope.github.io/circadian/api/plots.html#actogram)
 plot from the `circadian.plots` module
 
 ``` python
