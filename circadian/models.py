@@ -865,12 +865,12 @@ def derv(self,
 
     alpha = self.alpha_0 * (light / self.I0) ** self.p
     Bhat = self.G * alpha * (1 - n) * (1 - 0.4 * x) * (1 - 0.4 * xc)
-    mu_term = self.mu * (1/3 * x + 4/3 * x**3 - 256/105 * x**7)
-    taux_term = pow(24 / (0.99729 * self.taux), 2) + self.k * Bhat 
+    mu_term = self.mu * (1.0/3.0 * x + 4.0/3.0 * x**3 - 256.0/105.0 * x**7)
+    taux_term = pow(24.0 / (0.99729 * self.taux), 2) + self.k * Bhat 
 
     dydt = np.zeros_like(state)
     dydt[0,...] = np.pi/12 * (xc + mu_term + Bhat)
-    dydt[1,...] = np.pi/12* (self.q * Bhat * xc - x * taux_term)
+    dydt[1,...] = np.pi/12 * (self.q * Bhat * xc - x * taux_term)
     dydt[2,...] = 60.0 * (alpha * (1 - n) - self.beta * n)
     
     return dydt
