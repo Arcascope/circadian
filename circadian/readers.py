@@ -2,8 +2,8 @@
 
 # %% auto 0
 __all__ = ['VALID_WEREABLE_STREAMS', 'JSON_SCHEMA', 'EXAMPLE_DATA', 'wearable_schema', 'WereableAccessor', 'load_json',
-           'load_csv', 'combine_wereable_dataframes', 'WereableData_NEW', 'WearableData', 'combine_wearable_streams',
-           'read_standard_csv', 'read_standard_json', 'read_actiwatch']
+           'load_csv', 'distribute_stream_over_duration', 'combine_wereable_dataframes', 'WereableData_NEW',
+           'WearableData', 'combine_wearable_streams', 'read_standard_csv', 'read_standard_json', 'read_actiwatch']
 
 # %% ../nbs/api/05_readers.ipynb 4
 import json
@@ -18,6 +18,7 @@ VALID_WEREABLE_STREAMS = ['steps', 'heartrate', 'wake', 'light_estimate', 'activ
 # %% ../nbs/api/05_readers.ipynb 6
 @pd.api.extensions.register_dataframe_accessor("wereable")
 class WereableAccessor:
+    "pd.DataFrame accessor implementing wereable-specific methods"
     def __init__(self, pandas_obj):
         self._validate_columns(pandas_obj)
         self._obj = pandas_obj
@@ -40,7 +41,6 @@ class WereableAccessor:
             raise AttributeError("Metadata values must be strings.")
     
     def is_valid(self):
-        "Check if the dataframe is valid"
         self._validate_columns(self._obj)
         self._validate_metadata(self._obj.attrs)
         return True
@@ -49,7 +49,6 @@ class WereableAccessor:
                      metadata: Dict[str, str], # metadata containing data_id, subject_id, or other_info
                      inplace: bool = False, # whether to return a new dataframe or modify the current one
                      ):
-        "Add metadata to the dataframe"
         self._validate_metadata(metadata)
         if inplace:
             for key, value in metadata.items():
@@ -66,7 +65,6 @@ class WereableAccessor:
              *args, # arguments to pass to matplotlib.pyplot.plot
              **kwargs # keyword arguments to pass to matplotlib.pyplot.plot
              ):
-        "Plot wereable data"
         if name not in VALID_WEREABLE_STREAMS:
             raise AttributeError(f"Name must be one of: {VALID_WEREABLE_STREAMS}.")
         if ax is None:
@@ -76,6 +74,7 @@ class WereableAccessor:
         return ax
 
 # %% ../nbs/api/05_readers.ipynb 11
+# TODO: currently not in use because `jsonschema.validate` is very slow
 JSON_SCHEMA = {
     type: "object",
     "properties": {
@@ -107,26 +106,32 @@ JSON_SCHEMA = {
 # %% ../nbs/api/05_readers.ipynb 12
 def load_json(filepath: str, # path to file
               metadata: Dict[str, str] = None, # metadata containing data_id, subject_id, or other_info
-              ) -> Dict[str, pd.DataFrame]: # dictionary of wereable dataframes
-    "create a dataframe from a json containing wereable data"
+              ) -> Dict[str, pd.DataFrame]: # dictionary of wereable dataframes, one key:value pair per wereable data stream
+    "Create a dataframe from a json containing a single or multiple streams of wereable data"
+    # validate inputs
     if not isinstance(filepath, str):
         raise AttributeError("Filepath must be a string.")
-
+    if metadata is not None:
+        WereableAccessor._validate_metadata(metadata)
+    # load json
     jdict = json.load(open(filepath, 'r'))
     # jsonschema.validate(jdict, schema=JSON_SCHEMA) # TODO: check for a better option, this is VERY slow
     # check that keys are valid
     for key in jdict.keys():
         if key not in VALID_WEREABLE_STREAMS:
             raise AttributeError("Invalid key in JSON file. Keys must be one of steps, heartrate, wake, light_estimate, or activity.")
-    # create a df for each key
+    # create a df for each wereable stream
     df_dict = {key: pd.DataFrame.from_dict(jdict[key]) for key in jdict.keys()}
     for key in df_dict.keys():
         df = df_dict[key]
+        # create datetime column
         if key == 'heartrate':
             df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
         else:
-            df['datetime'] = pd.to_datetime(df['start'], unit='s')
-            df = df.rename(columns={'start': f'{key}_start', 'end': f'{key}_end'})
+            df['start'] = pd.to_datetime(df['start'], unit='s')
+            df['end'] = pd.to_datetime(df['end'], unit='s')
+            df['datetime'] = df['start']
+        # add metadata to each df
         if metadata is not None:
             df.wereable.add_metadata(metadata, inplace=True)
         else:
@@ -142,54 +147,87 @@ def load_csv(filepath: str, # full path to csv file to be loaded
              **kwargs, # keyword arguments to pass to pd.read_csv
              ):
     "Create a dataframe from a csv containing wereable data"
+    # validate inputs
+    if not isinstance(filepath, str):
+        raise AttributeError("Filepath must be a string.")
+    if not isinstance(timestamp_col, str) and timestamp_col is not None:
+        raise AttributeError("Timestamp column must be a string.")
+    if metadata is not None:
+        WereableAccessor._validate_metadata(metadata)
+    # load csv
     df = pd.read_csv(filepath, *args, **kwargs)
+    # create datetime column
     if timestamp_col is not None:
         df['datetime'] = pd.to_datetime(df[timestamp_col], unit='s')
+    if timestamp_col is None and 'datetime' not in df.columns:
+        raise AttributeError("CSV file must have a column named 'datetime' or a timestamp column must be provided.")
+    # add metadata
     if metadata is not None:
         df.wereable.add_metadata(metadata, inplace=True)
     else:
         df.wereable.add_metadata({'data_id': 'unknown', 'subject_id': 'unknown'}, inplace=True)
     return df
 
-# %% ../nbs/api/05_readers.ipynb 18
+# %% ../nbs/api/05_readers.ipynb 17
+def distribute_stream_over_duration(start: pd.Timestamp, # start of the stream
+                                    end: pd.Timestamp, # end of the stream
+                                    value: float, # value of the stream
+                                    name: str, # name of the stream
+                                    resample_freq: str, # frequency to resample the stream to
+                                    ) -> pd.DataFrame: # dataframe with the distributed stream
+    "Distribute a wereable datapoint over its duration"
+    # validate inputs
+    if not isinstance(start, pd.Timestamp):
+        raise AttributeError("Start must be a pandas Timestamp.")
+    if not isinstance(end, pd.Timestamp):
+        raise AttributeError("End must be a pandas Timestamp.")
+    if not isinstance(value, (int, float)):
+        raise AttributeError("Value must be an integer or float.")
+    if not isinstance(resample_freq, str):
+        raise AttributeError("Resample frequency must be a string.")
+    # create dataframe
+    if pd.to_timedelta(resample_freq) > (end - start):
+        datetime = pd.to_datetime(start + (end - start) / 2, unit='s')
+        df = pd.DataFrame({'datetime': datetime, name: value}, index=[0])
+    else:
+        df = pd.DataFrame({'datetime': pd.date_range(start, end, freq=resample_freq)})
+        df[name] = value / len(df)
+    return df
+
+# %% ../nbs/api/05_readers.ipynb 19
 def combine_wereable_dataframes(
         df_dict: Dict[str, pd.DataFrame], # dictionary of wereable dataframes
         metadata: Dict[str, str] = None, # metadata containing for the combined dataframe
-        resample: bool = False, # whether to resample the data
         resample_freq: str = '6T', # resampling frequency (e.g. '6T' for 6 minutes)
         ) -> pd.DataFrame: # combined wereable dataframe
-    "combine a dictionary of wereable dataframes into a single dataframe"
+    "Combine a dictionary of wereable dataframes into a single dataframe with resampling"
     df_list = []
     for name in df_dict.keys():
         df = df_dict[name]
         df.wereable.is_valid()
-        if resample:
-            if name == 'heartrate' or name == 'light_estimate':
-                resampled_df = df.resample(
-                                    resample_freq, on='datetime'
-                                ).agg(WEREABLE_RESAMPLE_METHOD[name])
-                resampled_df.reset_index(inplace=True)
-            else:
-                # TODO: deal with data streams that have start and end times
-                # ... 
-                '''
-                # for example
-                s1 = steps.loc[:, ['start', 'steps']]
-                s2 = steps.loc[:, ['end', 'steps']]
-                s1.rename(columns={'start': 'timestamp'}, inplace=True)
-                s2.rename(columns={'end': 'timestamp'}, inplace=True)
-                steps = pd.concat([s1, s2])
-                steps.set_index('timestamp', inplace=True)
-                steps = steps.resample(str(int(bin_minutes)) +
-                                    'Min').agg({'steps': 'sum'})
-                steps.reset_index(inplace=True)
-                '''
-                pass
+        if name in ['heartrate', 'light_estimate']:
+            resampled_df = df.resample(
+                                resample_freq, on='datetime'
+                            ).agg(WEREABLE_RESAMPLE_METHOD[name])
+            resampled_df.reset_index(inplace=True)
+        else:
+            # distribute wereable stream between start and end times
+            distributed_df = pd.DataFrame(columns=['datetime', name])
+            distribute_fn = lambda x: distribute_stream_over_duration(x.start, x.end, x[name], name, resample_freq)
+            distributed_df = pd.concat(df.apply(distribute_fn, axis=1).tolist())
+            distributed_df = distributed_df.groupby(distributed_df['datetime']).aggregate('sum') # if there are multiple values for the same datetime, add them
+            distributed_df = distributed_df.reset_index(drop=False)
+            # resample the distributed stream (to clean up those durations that are shorter than the resample frequency)
+            resampled_df = distributed_df.resample(
+                                resample_freq, on='datetime'
+                            ).agg(WEREABLE_RESAMPLE_METHOD[name])
         df_list.append(resampled_df)
-    # join all dfs by datetime
+    # merge all dfs by datetime
     df = df_list[0]
     for i in range(1, len(df_list)):
         df = df.merge(df_list[i], on='datetime', how='outer')
+    # sort by datetime
+    df.sort_values(by='datetime', inplace=True)
     # add metadata
     if metadata is not None:
         df.wereable.add_metadata(metadata, inplace=True)
