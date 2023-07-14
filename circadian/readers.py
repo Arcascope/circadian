@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['VALID_WEREABLE_STREAMS', 'JSON_SCHEMA', 'EXAMPLE_DATA', 'wearable_schema', 'WereableAccessor', 'load_json',
-           'load_csv', 'distribute_stream_over_duration', 'combine_wereable_dataframes', 'WereableData_NEW',
+           'load_csv', 'distribute_stream_over_duration', 'combine_wereable_dataframes', 'load_actiwatch',
            'WearableData', 'combine_wearable_streams', 'read_standard_csv', 'read_standard_json', 'read_actiwatch']
 
 # %% ../nbs/api/05_readers.ipynb 4
@@ -195,11 +195,10 @@ def distribute_stream_over_duration(start: pd.Timestamp, # start of the stream
     return df
 
 # %% ../nbs/api/05_readers.ipynb 19
-def combine_wereable_dataframes(
-        df_dict: Dict[str, pd.DataFrame], # dictionary of wereable dataframes
-        metadata: Dict[str, str] = None, # metadata containing for the combined dataframe
-        resample_freq: str = '6T', # resampling frequency (e.g. '6T' for 6 minutes)
-        ) -> pd.DataFrame: # combined wereable dataframe
+def combine_wereable_dataframes(df_dict: Dict[str, pd.DataFrame], # dictionary of wereable dataframes 
+                                metadata: Dict[str, str] = None, # metadata containing for the combined dataframe resample_freq: str = '6T', # resampling frequency (e.g. '6T' for 6 minutes)
+                                resample_freq: str = '6T', # resampling frequency (e.g. '6T' for 6 minutes)
+                                ) -> pd.DataFrame: # combined wereable dataframe
     "Combine a dictionary of wereable dataframes into a single dataframe with resampling"
     df_list = []
     for name in df_dict.keys():
@@ -221,6 +220,8 @@ def combine_wereable_dataframes(
             resampled_df = distributed_df.resample(
                                 resample_freq, on='datetime'
                             ).agg(WEREABLE_RESAMPLE_METHOD[name])
+        if WEREABLE_NULL_VALUE_CONVERSION[name] is not None:
+            resampled_df.replace(WEREABLE_NULL_VALUE_CONVERSION[name], inplace=True)
         df_list.append(resampled_df)
     # merge all dfs by datetime
     df = df_list[0]
@@ -236,6 +237,32 @@ def combine_wereable_dataframes(
     return df
 
 # %% ../nbs/api/05_readers.ipynb 22
+def load_actiwatch(filepath: str, # full path to csv file to be loaded
+                   metadata: Dict[str, str] = None, # metadata containing data_id, subject_id, or other_info
+                   *args, # arguments to pass to pd.read_csv
+                   **kwargs, # keyword arguments to pass to pd.read_csv
+                   ) -> pd.DataFrame: # dataframe with the wereable data
+    "Create a dataframe from an actiwatch csv file"
+    # validate inputs
+    if not isinstance(filepath, str):
+        raise AttributeError("Filepath must be a string.")
+    if metadata is not None:
+        WereableAccessor._validate_metadata(metadata)
+    # load csv
+    df = pd.read_csv(filepath, *args, **kwargs)
+    df['datetime'] = pd.to_datetime(df['Date']+" "+df['Time'])
+    # drop unnecessary columns
+    df.drop(columns=['Date', 'Time'], inplace=True)
+    # rename columns
+    df.rename(columns=ACTIWATCH_COLUMN_RENAMIING, inplace=True)
+    # add metadata
+    if metadata is not None:
+        df.wereable.add_metadata(metadata, inplace=True)
+    else:
+        df.wereable.add_metadata({'data_id': 'unknown', 'subject_id': 'unknown'}, inplace=True)
+    return df
+
+# %% ../nbs/api/05_readers.ipynb 27
 import os
 import json
 import gzip
@@ -261,10 +288,10 @@ from typing import List, Tuple, Dict, Union, Optional, Any, Callable, Iterable
 
 pd.options.mode.chained_assignment = None
 
-# %% ../nbs/api/05_readers.ipynb 23
+# %% ../nbs/api/05_readers.ipynb 28
 EXAMPLE_DATA = circadian.__path__[0]
 
-# %% ../nbs/api/05_readers.ipynb 24
+# %% ../nbs/api/05_readers.ipynb 29
 wearable_schema = {
     type: "object",
     "properties": {
@@ -294,106 +321,6 @@ wearable_schema = {
 }
 
 # %% ../nbs/api/05_readers.ipynb 30
-class WereableData_NEW:
-    "Helper class for working with wereable data"
-    def __init__(self,
-                 dataframe: pd.DataFrame, # Required columns: datetime, wereable-data (one of steps, heartrate, wake, light_estimate, or activity)
-                 data_id: str="unknown-data-id", # Unique identifier for the data
-                 subject_id: str="unknown-subject", # Unique subject identifier
-                 meta_data: Dict[str, Any]=None # Additional information about the dataset
-                 ):
-        self._dataframe = dataframe
-        self._data_id = data_id
-        self._subject_id = subject_id
-        self._meta_data = meta_data
-
-    @property
-    def dataframe(self) -> pd.DataFrame:
-        return self._dataframe
-    
-    @dataframe.setter
-    def dataframe(self, value):
-        # check that dataframe is the correct type and has the required columns
-        self._dataframe = value
-
-    @property
-    def data_id(self) -> str:
-        return self._data_id
-
-    @data_id.setter
-    def data_id(self, value):
-        # check that it is a string
-        self._data_id = value
-
-    @property
-    def subject_id(self) -> str:
-        return self._subject_id
-    
-    @subject_id.setter
-    def subject_id(self, value) -> str:
-        # check that it is a string
-        self._subject_id = value
-
-    @property
-    def meta_data(self) -> Dict[str, Any]:
-        return self._meta_data
-
-    @meta_data.setter
-    def meta_data(self, value):
-        # check it is a dict
-        self._meta_data = value
-    
-
-# %% ../nbs/api/05_readers.ipynb 32
-@patch_to(WereableData_NEW)
-def from_json(self,
-              filepath: str, # path to file
-              ):
-    "Create a WereableData object from a json"
-    # check that filepath is a str
-    # load json
-    # check json schema
-    # create dataframe
-    # create object and return it
-    jdict = json.load(open(filepath, 'r'))
-    df = pd.DataFrame.from_dict(jdict['wearable']) 
-    df['datetime'] = pd.to_datetime(df['timestamp'], unit='s')
-    return WearableData_NEW(df)
-
-# %% ../nbs/api/05_readers.ipynb 33
-@patch_to(WereableData_NEW)
-def from_csv(self,
-             filepath: str, # path to file
-             ):
-    "Create a WereableData object from a csv file"
-    # load csv into a dataframe
-    # check required fields
-    # create object and return it
-    pass
-
-# %% ../nbs/api/05_readers.ipynb 34
-#TODO: Do we need this or it can be read as a csv???
-@patch_to(WereableData_NEW)
-def from_actiwatch(self,
-                   filepath: str, # path to file
-                   ):
-    "Create a WereableData object from an actiwatch record file"
-    # load file into a dataframe
-    # check required fields
-    # create object and return it
-    pass
-
-# %% ../nbs/api/05_readers.ipynb 35
-@patch_to(WereableData_NEW)
-def to_json(self, 
-            filepath: str, # path to file
-            filename: str, # filename without .json
-            ):
-    "Save a WereableData object as a json"
-    # TODO: check Kevin's implementation
-    pass
-
-# %% ../nbs/api/05_readers.ipynb 38
 @dataclass
 class WearableData:
     _dataframe: pd.DataFrame # the dataframe that holds the data must have datetime columns plus any other wearable streams from steps, heartrate, wake, light_estimate, activity
@@ -573,7 +500,7 @@ class WearableData:
 
         return wdata
 
-# %% ../nbs/api/05_readers.ipynb 39
+# %% ../nbs/api/05_readers.ipynb 31
 @patch_to(WearableData)
 def steps_hr_loglinear(self: WearableData
                        ) -> Tuple[float, float]:
@@ -589,7 +516,7 @@ def steps_hr_loglinear(self: WearableData
         slope, intercept, r_value, p_value, std_err = linregress(x, y)
         return slope, intercept
 
-# %% ../nbs/api/05_readers.ipynb 41
+# %% ../nbs/api/05_readers.ipynb 33
 @patch_to(WearableData)
 def plot_heartrate(self: WearableData, 
                    t1=None, 
@@ -624,7 +551,7 @@ def plot_heartrate(self: WearableData,
             plt.show()
         return ax
 
-# %% ../nbs/api/05_readers.ipynb 42
+# %% ../nbs/api/05_readers.ipynb 34
 @patch_to(WearableData)
 def scatter_hr_steps(self: WearableData, 
                      take_log: bool = True, # Log transform the data?
@@ -654,7 +581,7 @@ def scatter_hr_steps(self: WearableData,
         ax.set_title('Heart Rate Data')
         plt.show()
 
-# %% ../nbs/api/05_readers.ipynb 43
+# %% ../nbs/api/05_readers.ipynb 35
 @patch_to(WearableData)
 def plot_hr_steps(self: WearableData, 
                   t1: float = None, 
@@ -705,7 +632,7 @@ def plot_hr_steps(self: WearableData,
         ax[0].set_ylim((0, 200))
         plt.show()
 
-# %% ../nbs/api/05_readers.ipynb 45
+# %% ../nbs/api/05_readers.ipynb 37
 def combine_wearable_streams(steps: pd.DataFrame,  # dataframe with columns 'start', 'end', 'steps'
                              heartrate: pd.DataFrame,  # dataframe with columns 'timestamp', 'heartrate'
                              wake: pd.DataFrame,  # dataframe with columns 'start', 'end', 'wake'
@@ -814,7 +741,7 @@ def read_standard_csv(path: str,  # path to the directory containing the csv fil
 
     return combine_wearable_streams(steps, heartrate, wake, bin_minutes, subject_id, data_id, sleep_trim, inner_join)
 
-# %% ../nbs/api/05_readers.ipynb 46
+# %% ../nbs/api/05_readers.ipynb 38
 def read_standard_json(filepath: str,  # path to json file
                        bin_minutes: int = 6,  # data will be binned to this resolution in minutes
                        subject_id: str = "unknown-subject",  # subject id to be used
@@ -838,7 +765,7 @@ def read_standard_json(filepath: str,  # path to json file
 
     return combine_wearable_streams(steps, heartrate, wake, bin_minutes, subject_id, data_id, sleep_trim, inner_join)
 
-# %% ../nbs/api/05_readers.ipynb 47
+# %% ../nbs/api/05_readers.ipynb 39
 @patch_to(WearableData)
 def fillna(self: WearableData, 
              column_name: str = "heartrate", # column to fill in the dataframe
@@ -854,7 +781,7 @@ def fillna(self: WearableData,
         df[column_name] = filled_column 
         return self._copy_with_metadata(df)
 
-# %% ../nbs/api/05_readers.ipynb 63
+# %% ../nbs/api/05_readers.ipynb 55
 @patch_to(WearableData)
 def plot_light_activity(self: WearableData, 
                         show=True, 
@@ -897,7 +824,7 @@ def plot_light_activity(self: WearableData,
         else:
             return ax
 
-# %% ../nbs/api/05_readers.ipynb 65
+# %% ../nbs/api/05_readers.ipynb 57
 def read_actiwatch(filepath: str, # path to actiwatch csv file
                    MIN_LIGHT_THRESHOLD=5000, # used to trim off empty data at the beginning and end of the file, must reach this amount of light to be included. Turn this off can setting this to 0 or negative 
                    round_data=True, # round the data to the nearest bin_minutes 
