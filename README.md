@@ -22,12 +22,14 @@ pip install circadian
 The `circadian` package implements key mathematical models in the field
 such as:
 
-- `Forger99Model()` - [Forger et
-  al. (1999)](https://doi.org/10.1177/074873099129000867)
-- `Hannay19()` and `Hannay19TP()` - [Hannay et
-  al. (2019)](https://doi.org/10.1177/0748730419878298)
-- `KronauerJewett()` - [Kronauer et
-  al. (1999)](https://doi.org/10.1177/074873049901400608)
+- [`Forger99`](https://arcascope.github.io/circadian/api/models.html#forger99) -
+  [Forger et al. (1999)](https://doi.org/10.1177/074873099129000867)
+- [`Hannay19`](https://arcascope.github.io/circadian/api/models.html#hannay19)
+  and
+  [`Hannay19TP`](https://arcascope.github.io/circadian/api/models.html#hannay19tp) -
+  [Hannay et al. (2019)](https://doi.org/10.1177/0748730419878298)
+- [`Jewett99`](https://arcascope.github.io/circadian/api/models.html#jewett99) -
+  [Kronauer et al. (1999)](https://doi.org/10.1177/074873049901400608)
 
 See all the available models at
 [circadian/models.py](https://github.com/Arcascope/circadian/blob/main/circadian/models.py)
@@ -38,7 +40,7 @@ analzying circadian rhythms:
 - Define light schedules using the `Light` class and feed directly into
   the models
 - Calculate phase response curves using the
-  [`PRCFinder`](https://arcascope.github.io/circadian/prc.html#prcfinder)
+  [`PRCFinder`](https://arcascope.github.io/circadian/api/prc.html#prcfinder)
   class
 - Generate actograms and phase plots with the `circadian.plots` module
 
@@ -55,62 +57,72 @@ worker for four different models and visualize the results in an
 actogram plot
 
 ``` python
-from circadian.plots import Actogram
-from circadian.models import *
-from circadian.lights import LightSchedule
-
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.lines as lines
+from circadian.plots import Actogram
+from circadian.lights import LightSchedule
+from circadian.models import Forger99, Jewett99, Hannay19, Hannay19TP
 
 days_night = 3
 days_day = 2
-slam_shift = LightSchedule.ShiftWork(lux=300.0,
-                                          days_on=days_night, 
-                                          days_off=days_day)
-ts = np.arange(0, 24*30,0.10)
-light_values = slam_shift(ts)
+slam_shift = LightSchedule.ShiftWork(lux=300.0, days_on=days_night, days_off=days_day)
 
-f_model = Forger99Model()
+total_days = 30
+time = np.arange(0, 24*total_days, 0.10)
+light_values = slam_shift(time)
+
+f_model = Forger99()
+kj_model = Jewett99()
 spm_model = Hannay19()
 tpm_model = Hannay19TP()
-kj_model = KronauerJewett()
-initial_conditions_forger = f_model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
-initial_conditions_kj = kj_model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
-initial_conditions_spm = spm_model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
-initial_conditions_tpm = tpm_model.initial_conditions_loop(ts, light_est=light_values, num_loops=1)
+
+equilibration_reps = 2
+initial_conditions_forger = f_model.equilibrate(time, light_values, equilibration_reps)
+initial_conditions_kj = kj_model.equilibrate(time, light_values, equilibration_reps)
+initial_conditions_spm = spm_model.equilibrate(time, light_values, equilibration_reps)
+initial_conditions_tpm = tpm_model.equilibrate(time, light_values, equilibration_reps)
 ```
 
 The models are integrated using an explicit Runge-Kutta 4 (RK4) scheme
 
 ``` python
-trajectory = f_model(ts=ts, light_est=light_values, state = initial_conditions_forger)
-trajectory_kj = kj_model(ts=ts, light_est=light_values, state = initial_conditions_kj)
-trajectory_spm = spm_model(ts=ts, light_est=light_values, state = initial_conditions_spm)
-trajectory_tpm = tpm_model(ts=ts, light_est=light_values, state = initial_conditions_tpm)
+trajectory_f = f_model(time, initial_conditions_forger, light_values)
+trajectory_kj = kj_model(time, initial_conditions_kj, light_values)
+trajectory_spm = spm_model(time, initial_conditions_spm, light_values)
+trajectory_tpm = tpm_model(time, initial_conditions_tpm, light_values)
 ```
 
 The Dim Light Melatonin Onset (DLMO), an experimental measurement of
 circadian phase, is calculated for each model by
 
 ``` python
-dlmo_f = f_model.dlmos(trajectory)
-dlmo_kj = kj_model.dlmos(trajectory)
-dlmo_spm = spm_model.dlmos(trajectory_spm)
-dlmo_tpm = tpm_model.dlmos(trajectory_tpm)
+dlmo_f = f_model.dlmos()
+dlmo_kj = kj_model.dlmos()
+dlmo_spm = spm_model.dlmos()
+dlmo_tpm = tpm_model.dlmos()
 ```
 
 Lastly, the results of the simulation–DLMOs included– are visualized in
 an
-[`Actogram`](https://arcascope.github.io/circadian/plots.html#actogram)
+[`Actogram`](https://arcascope.github.io/circadian/api/plots.html#actogram)
 plot from the `circadian.plots` module
 
 ``` python
-acto = Actogram(ts, light_vals=light_values, opacity=1.0, smooth=False)
-acto.plot_phasemarker(dlmo_f, color='blue', label= "DLMO Forger99")
-acto.plot_phasemarker(dlmo_spm, color='darkgreen', label = "DLMO SPM")
-acto.plot_phasemarker(dlmo_tpm, color='red', label = "DLMO TPM" )
-acto.plot_phasemarker(dlmo_kj, color='purple', label = "DLMO TPM" )
-plt.title("Actogram for a Simulated Shift Worker")
+acto = Actogram(time, light_vals=light_values, opacity=1.0, smooth=False)
+acto.plot_phasemarker(dlmo_f, color='blue')
+acto.plot_phasemarker(dlmo_spm, color='darkgreen')
+acto.plot_phasemarker(dlmo_tpm, color='red')
+acto.plot_phasemarker(dlmo_kj, color='purple')
+# legend
+blue_line = lines.Line2D([], [], color='blue', label='Forger99')
+green_line = lines.Line2D([], [], color='darkgreen', label='Hannay19')
+red_line = lines.Line2D([], [], color='red', label='Hannay19TP')
+purple_line = lines.Line2D([], [], color='purple', label='Jewett99')
+
+plt.legend(handles=[blue_line, purple_line, green_line, red_line], 
+           loc='upper center', bbox_to_anchor=(0.5, 1.12), ncol=4)
+plt.title("Actogram for a Simulated Shift Worker", pad=35)
 plt.tight_layout()
 plt.show()
 ```
