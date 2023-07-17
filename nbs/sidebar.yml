@@ -1,14 +1,13 @@
 website:
   sidebar:
+    collapse-level: 1
     contents:
-      - index.ipynb
-      - 00_models.ipynb
-      - 01_lights.ipynb
-      - 02_prc.ipynb
-      - 03_plots.ipynb
-      - 04_metrics.ipynb
-      - 05_readers.ipynb
-      - 06_sleep.ipynb
-      - 07_utils.ipynb
-      - 08_phasetools.ipynb
-      - 09_cli.ipynb
+      - text: "Welcome"
+        file: index.ipynb
+      - section: Examples
+        contents:
+          - auto: "examples/*"
+      - section: API
+        contents:
+          - auto: "api/*"
+        border: True
