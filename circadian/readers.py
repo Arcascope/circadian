@@ -128,8 +128,14 @@ def load_csv(filepath: str, # full path to csv file to be loaded
     # create datetime column
     if timestamp_col is not None:
         df['datetime'] = pd.to_datetime(df[timestamp_col], unit='s')
-    if timestamp_col is None and 'datetime' not in df.columns:
-        raise AttributeError("CSV file must have a column named 'datetime' or a timestamp column must be provided.")
+    if timestamp_col is None:
+        if 'datetime' in df.columns:
+            df['datetime'] = pd.to_datetime(df['datetime'])
+        elif 'start' in df.columns and 'end' in df.columns:
+            df['start'] = pd.to_datetime(df['start'])
+            df['end'] = pd.to_datetime(df['end'])
+        if 'datetime' not in df.columns and 'start' not in df.columns and 'end' not in df.columns:
+            raise AttributeError("CSV file must have a column named 'datetime' or 'start' and 'end'")
     # add metadata
     if metadata is not None:
         df.wereable.add_metadata(metadata, inplace=True)
@@ -171,15 +177,6 @@ def load_actiwatch(filepath: str, # full path to csv file to be loaded
     return df
 
 # %% ../nbs/api/05_readers.ipynb 14
-WEREABLE_RESAMPLE_METHOD = {
-    'steps': 'sum',
-    'wake': 'max',
-    'heartrate': 'mean',
-    'light_estimate': 'mean',
-    'activity': 'mean',
-}
-
-# %% ../nbs/api/05_readers.ipynb 15
 def resample_df(df: pd.DataFrame, # dataframe to be resampled
                 name: str, # name of the wereable data to resample (one of steps, heartrate, wake, light_estimate, or activity)
                 freq: str, # frequency to resample to
@@ -241,10 +238,19 @@ def resample_df(df: pd.DataFrame, # dataframe to be resampled
 
     return pd.DataFrame({'datetime': new_datetime, name: new_values})
 
+# %% ../nbs/api/05_readers.ipynb 16
+WEREABLE_RESAMPLE_METHOD = {
+    'steps': 'sum',
+    'wake': 'max',
+    'heartrate': 'mean',
+    'light_estimate': 'mean',
+    'activity': 'mean',
+}
+
 # %% ../nbs/api/05_readers.ipynb 17
 def combine_wereable_dataframes(df_dict: Dict[str, pd.DataFrame], # dictionary of wereable dataframes 
+                                resample_freq: str, # resampling frequency (e.g. '10min' for 10 minutes, see Pandas Offset aliases: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases)
                                 metadata: Dict[str, str] = None, # metadata for the combined dataframe
-                                resample_freq: str = '10min', # resampling frequency (e.g. '10min' for 10 minutes, see Pandas Offset aliases: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases)
                                 ) -> pd.DataFrame: # combined wereable dataframe
     "Combine a dictionary of wereable dataframes into a single dataframe with resampling"
     df_list = []
