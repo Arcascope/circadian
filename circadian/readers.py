@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['VALID_WEREABLE_STREAMS', 'WereableAccessor', 'load_json', 'load_csv', 'load_actiwatch', 'resample_df',
-           'distribute_stream_over_duration', 'combine_wereable_dataframes']
+           'combine_wereable_dataframes']
 
 # %% ../nbs/api/05_readers.ipynb 4
 import json
@@ -24,19 +24,21 @@ class WereableAccessor:
     @staticmethod
     def _validate_columns(obj):
         if 'datetime' not in obj.columns:
-            raise AttributeError("DataFrame must have 'datetime' column.")
+            if 'start' not in obj.columns and 'end' not in obj.columns:
+                raise AttributeError("DataFrame must have 'datetime' column or 'start' and 'end' columns")
 
         if not any([col in obj.columns for col in VALID_WEREABLE_STREAMS]):
             raise AttributeError(f"DataFrame must have at least one wereable data column from: {VALID_WEREABLE_STREAMS}.")
         
     @staticmethod
     def _validate_metadata(metadata):
-        if not isinstance(metadata, dict):
-            raise AttributeError("Metadata must be a dictionary.")
-        if not any([key in metadata.keys() for key in ['data_id', 'subject_id']]):
-            raise AttributeError("Metadata must have at least one of the following keys: data_id, subject_id.")
-        if not all([isinstance(value, str) for value in metadata.values()]):
-            raise AttributeError("Metadata values must be strings.")
+        if metadata:
+            if not isinstance(metadata, dict):
+                raise AttributeError("Metadata must be a dictionary.")
+            if not any([key in metadata.keys() for key in ['data_id', 'subject_id']]):
+                raise AttributeError("Metadata must have at least one of the following keys: data_id, subject_id.")
+            if not all([isinstance(value, str) for value in metadata.values()]):
+                raise AttributeError("Metadata values must be strings.")
     
     def is_valid(self):
         self._validate_columns(self._obj)
@@ -164,10 +166,13 @@ def load_actiwatch(filepath: str, # full path to csv file to be loaded
 
 # %% ../nbs/api/05_readers.ipynb 21
 def resample_df(df: pd.DataFrame, # dataframe to be resampled
-                freq: str = '1min', # frequency to resample to
-                name: str = None, # name of the wereable data to resample (one of steps, heartrate, wake, light_estimate, or activity)
+                name: str, # name of the wereable data to resample (one of steps, heartrate, wake, light_estimate, or activity)
+                freq: str, # frequency to resample to
+                agg_method: str, # aggregation method to use when resampling
+                initial_datetime: pd.Timestamp = None, # initial datetime to use when resampling. If None, the minimum datetime in the dataframe is used
+                final_datetime: pd.Timestamp = None, # final datetime to use when resampling. If None, the maximum datetime in the dataframe is used
                 ) -> pd.DataFrame: # resampled dataframe
-    "Resample a wereable dataframe"
+    "Resample a wereable dataframe. If data is specified in intervals, returns the density of the quantity per minute."
     # validate inputs
     if not df.wereable.is_valid():
         raise AttributeError("Dataframe must be a valid wereable dataframe.")
@@ -179,78 +184,77 @@ def resample_df(df: pd.DataFrame, # dataframe to be resampled
         raise AttributeError(f"Name must be one of: {VALID_WEREABLE_STREAMS}.")
     if name not in df.columns:
         raise AttributeError(f"Name must be one of: {df.columns}.")
+    if agg_method not in ['sum', 'mean', 'max', 'min']:
+        raise AttributeError("Aggregation method must be one of: sum, mean, max, min.")
+    if initial_datetime is not None and not isinstance(initial_datetime, pd.Timestamp):
+        raise AttributeError("Initial datetime must be a pandas timestamp.")
+    if final_datetime is not None and not isinstance(final_datetime, pd.Timestamp):
+        raise AttributeError("Final datetime must be a pandas timestamp.")
     # resample
+    values = df[name]
     if 'start' in df.columns and 'end' in df.columns:
-        intial_datetime = df.start.min()
-        final_datetime = df.end.max()
-        new_datetime = pd.date_range(intial_datetime, final_datetime, freq=freq)
+        # data is specified in intervals
+        starts = df.start
+        stops = df.end
+        if initial_datetime is None:
+            initial_datetime = starts.min()
+        if final_datetime is None:
+            final_datetime = stops.max()
+        new_datetime = pd.date_range(initial_datetime, final_datetime, freq=freq)
         new_values = np.zeros(len(new_datetime))
-        # ...
-        new_df = pd.DataFrame({'datetime': new_datetime, name: new_values})
+        for idx, datetime in enumerate(new_datetime):
+            next_datetime = datetime + pd.to_timedelta(freq)
+            mask = (starts <= next_datetime) & (stops > datetime)
+            if len(values[mask]) > 0:
+                # NOTE: returns the density of the quantity per minute
+                time_interval = (stops[mask] - starts[mask]).apply(lambda x: x.seconds / 60.0)
+                new_values[idx] = (values[mask] / time_interval).agg(agg_method)
     else:
-        intial_datetime = df.datetime.min()
-        final_datetime = df.datetime.max()
-        new_datetime = pd.date_range(intial_datetime, final_datetime, freq=freq)
+        # data is specified per datetime
+        data_datetimes = df.datetime
+        if initial_datetime is None:
+            initial_datetime = data_datetimes.min()
+        if final_datetime is None:
+            final_datetime = data_datetimes.max()
+        new_datetime = pd.date_range(initial_datetime, final_datetime, freq=freq)
         new_values = np.zeros(len(new_datetime))
-        # ...
-        new_df = pd.DataFrame({'datetime': new_datetime, name: new_values})
-    return new_df
+        for idx, datetime in enumerate(new_datetime):
+            next_datetime = datetime + pd.to_timedelta(freq)
+            mask = (data_datetimes <= next_datetime) & (data_datetimes >= datetime)
+            if len(values[mask]) > 0:
+                new_values[idx] = values[mask].agg(agg_method)
 
-# %% ../nbs/api/05_readers.ipynb 25
-def distribute_stream_over_duration(start: pd.Timestamp, # start of the stream
-                                    end: pd.Timestamp, # end of the stream
-                                    value: float, # value of the stream
-                                    name: str, # name of the stream
-                                    resample_freq: str, # frequency to resample the stream to
-                                    ) -> pd.DataFrame: # dataframe with the distributed stream
-    "Distribute a wereable datapoint over its duration"
-    # validate inputs
-    if not isinstance(start, pd.Timestamp):
-        raise AttributeError("Start must be a pandas Timestamp.")
-    if not isinstance(end, pd.Timestamp):
-        raise AttributeError("End must be a pandas Timestamp.")
-    if not isinstance(value, (int, float)):
-        raise AttributeError("Value must be an integer or float.")
-    if not isinstance(resample_freq, str):
-        raise AttributeError("Resample frequency must be a string.")
-    # create dataframe
-    if pd.to_timedelta(resample_freq) > (end - start):
-        datetime = pd.to_datetime(start + (end - start) / 2, unit='s')
-        df = pd.DataFrame({'datetime': datetime, name: value}, index=[0])
-    else:
-        df = pd.DataFrame({'datetime': pd.date_range(start, end, freq=resample_freq)})
-        df[name] = value / len(df)
-    return df
+    return pd.DataFrame({'datetime': new_datetime, name: new_values})
 
-# %% ../nbs/api/05_readers.ipynb 27
+# %% ../nbs/api/05_readers.ipynb 23
 def combine_wereable_dataframes(df_dict: Dict[str, pd.DataFrame], # dictionary of wereable dataframes 
-                                metadata: Dict[str, str] = None, # metadata containing for the combined dataframe resample_freq: str = '6T', # resampling frequency (e.g. '6T' for 6 minutes)
-                                resample_freq: str = '6T', # resampling frequency (e.g. '6T' for 6 minutes)
+                                metadata: Dict[str, str] = None, # metadata for the combined dataframe
+                                resample_freq: str = '10min', # resampling frequency (e.g. '10min' for 10 minutes, see Pandas Offset aliases: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases)
                                 ) -> pd.DataFrame: # combined wereable dataframe
     "Combine a dictionary of wereable dataframes into a single dataframe with resampling"
     df_list = []
+    # find common initial and final datetimes
+    initial_datetimes = []
+    final_datetimes = []
     for name in df_dict.keys():
         df = df_dict[name]
         df.wereable.is_valid()
-        if name in ['heartrate', 'light_estimate']:
-            resampled_df = df.resample(
-                                resample_freq, on='datetime'
-                            ).agg(WEREABLE_RESAMPLE_METHOD[name])
-            resampled_df.reset_index(inplace=True)
+        if 'start' in df.columns:
+            initial_datetimes.append(df.start.min())
+            final_datetimes.append(df.end.max())
         else:
-            # distribute wereable stream between start and end times
-            distributed_df = pd.DataFrame(columns=['datetime', name])
-            distribute_fn = lambda x: distribute_stream_over_duration(x.start, x.end, x[name], name, resample_freq)
-            distributed_df = pd.concat(df.apply(distribute_fn, axis=1).tolist())
-            distributed_df = distributed_df.groupby(distributed_df['datetime']).aggregate('sum') # if there are multiple values for the same datetime, add them
-            distributed_df = distributed_df.reset_index(drop=False)
-            # resample the distributed stream (to clean up those durations that are shorter than the resample frequency)
-            resampled_df = distributed_df.resample(
-                                resample_freq, on='datetime'
-                            ).agg(WEREABLE_RESAMPLE_METHOD[name])
-        if WEREABLE_NULL_VALUE_CONVERSION[name] is not None:
-            resampled_df.replace(WEREABLE_NULL_VALUE_CONVERSION[name], inplace=True)
-        df_list.append(resampled_df)
+            initial_datetimes.append(df.datetime.min())
+            final_datetimes.append(df.datetime.max())
+    initial_datetime = min(initial_datetimes)
+    final_datetime = max(final_datetimes)
+    # resample each df
+    for name in df_dict.keys():
+        df = df_dict[name]
+        new_df = resample_df(df, name, resample_freq, 
+                             WEREABLE_RESAMPLE_METHOD[name],
+                             initial_datetime=initial_datetime,
+                             final_datetime=final_datetime)
+        df_list.append(new_df)
     # merge all dfs by datetime
     df = df_list[0]
     for i in range(1, len(df_list)):
