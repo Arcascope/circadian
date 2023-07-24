@@ -179,7 +179,7 @@ def load_actiwatch(filepath: str, # full path to csv file to be loaded
 # %% ../nbs/api/05_readers.ipynb 14
 def resample_df(df: pd.DataFrame, # dataframe to be resampled
                 name: str, # name of the wearable data to resample (one of steps, heartrate, wake, light_estimate, or activity)
-                freq: str, # frequency to resample to
+                freq: str, # frequency to resample to. String must be a valid pandas frequency string (e.g. '1min', '5min', '1H', '1D'). See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
                 agg_method: str, # aggregation method to use when resampling
                 initial_datetime: pd.Timestamp = None, # initial datetime to use when resampling. If None, the minimum datetime in the dataframe is used
                 final_datetime: pd.Timestamp = None, # final datetime to use when resampling. If None, the maximum datetime in the dataframe is used
