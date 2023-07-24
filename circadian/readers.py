@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['VALID_WEARABLE_STREAMS', 'ACTIWATCH_COLUMN_RENAMING', 'WEARABLE_RESAMPLE_METHOD', 'WearableData', 'load_json',
-           'load_csv', 'load_actiwatch', 'resample_df', 'combine_wearable_dataframes']
+           'load_csv', 'load_actiwatch', 'interval_fraction', 'resample_df', 'combine_wearable_dataframes']
 
 # %% ../nbs/api/05_readers.ipynb 4
 import json
@@ -177,6 +177,20 @@ def load_actiwatch(filepath: str, # full path to csv file to be loaded
     return df
 
 # %% ../nbs/api/05_readers.ipynb 14
+def interval_fraction(
+        starts: pd.Series, # start datetimes of intervals
+        stops: pd.Series, # stop datetimes of intervals
+        ref_start: pd.Timestamp, # start datetime of reference interval
+        ref_stop: pd.Timestamp # stop datetime of reference interval
+        ):
+        "Calculate the fraction of each interval contained in the reference interval."
+        max_starts = starts.apply(lambda x: max(x, ref_start))
+        min_ends = stops.apply(lambda x: min(x, ref_stop))
+        contained_intervals = (min_ends - max_starts).apply(lambda x: x.seconds)
+        full_intervals = (stops - starts).apply(lambda x: x.seconds)
+        return contained_intervals / full_intervals
+
+# %% ../nbs/api/05_readers.ipynb 15
 def resample_df(df: pd.DataFrame, # dataframe to be resampled
                 name: str, # name of the wearable data to resample (one of steps, heartrate, wake, light_estimate, or activity)
                 freq: str, # frequency to resample to. String must be a valid pandas frequency string (e.g. '1min', '5min', '1H', '1D'). See https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases
@@ -218,9 +232,9 @@ def resample_df(df: pd.DataFrame, # dataframe to be resampled
             next_datetime = datetime + pd.to_timedelta(freq)
             mask = (starts <= next_datetime) & (stops > datetime)
             if len(values[mask]) > 0:
-                # NOTE: returns the density of the quantity per minute
-                time_interval = (stops[mask] - starts[mask]).apply(lambda x: x.seconds / 60.0)
-                new_values[idx] = (values[mask] / time_interval).agg(agg_method)
+                # calculate the fraction of each interval contained in the resampled interval
+                value_fraction = interval_fraction(starts[mask], stops[mask], datetime, next_datetime)
+                new_values[idx] = (values[mask] * value_fraction).agg(agg_method)
     else:
         # data is specified per datetime
         data_datetimes = df.datetime
@@ -238,7 +252,7 @@ def resample_df(df: pd.DataFrame, # dataframe to be resampled
 
     return pd.DataFrame({'datetime': new_datetime, name: new_values})
 
-# %% ../nbs/api/05_readers.ipynb 16
+# %% ../nbs/api/05_readers.ipynb 17
 WEARABLE_RESAMPLE_METHOD = {
     'steps': 'sum',
     'wake': 'max',
@@ -247,7 +261,7 @@ WEARABLE_RESAMPLE_METHOD = {
     'activity': 'mean',
 }
 
-# %% ../nbs/api/05_readers.ipynb 17
+# %% ../nbs/api/05_readers.ipynb 18
 def combine_wearable_dataframes(df_dict: Dict[str, pd.DataFrame], # dictionary of wearable dataframes 
                                 resample_freq: str, # resampling frequency (e.g. '10min' for 10 minutes, see Pandas Offset aliases: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases)
                                 metadata: Dict[str, str] = None, # metadata for the combined dataframe
