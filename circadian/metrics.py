@@ -8,8 +8,6 @@ import numpy as np
 from typing import List
 from .models import Hannay19
 from .lights import LightSchedule
-from .utils import phase_ic_guess
-from .readers import WearableData
 
 # %% ../nbs/api/04_metrics.ipynb 5
 def esri(time: np.ndarray, # time in hours to use for the simulation 
