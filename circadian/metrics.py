@@ -5,12 +5,12 @@ __all__ = ['esri', 'esri_trajectory']
 
 # %% ../nbs/api/04_metrics.ipynb 4
 import numpy as np
+import pandas as pd
 from .models import Hannay19
 from .utils import phase_ic_guess
-from .readers import WearableData
 
 # %% ../nbs/api/04_metrics.ipynb 5
-def esri(awObj: WearableData, 
+def esri(awObj: pd.DataFrame, 
                 gamma: float = 0.0,
                 multiplier: float = 1.0,
                 num_days: float = 4.5):
@@ -25,7 +25,7 @@ def esri(awObj: WearableData,
     return sol.time, sol.states
 
 # %% ../nbs/api/04_metrics.ipynb 6
-def esri_trajectory(awObj: WearableData,
+def esri_trajectory(awObj: pd.DataFrame,
                     gamma: float = 0.0,
                     multiplier: float = 1.0,
                     num_days: float = 4.5,
