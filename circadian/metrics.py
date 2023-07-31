@@ -4,6 +4,7 @@
 __all__ = ['esri']
 
 # %% ../nbs/api/04_metrics.ipynb 4
+import warnings
 import numpy as np
 from typing import List
 from .models import Hannay19
@@ -13,7 +14,7 @@ from .lights import LightSchedule
 def esri(time: np.ndarray, # time in hours to use for the simulation 
          light_schedule: np.ndarray, # light schedule in lux 
          analysis_days: int=4, # number of days used to calculate ESRI
-         esri_dt: float=1.0, # time resolution of the ESRI calculation
+         esri_dt: float=1.0, # time resolution of the ESRI calculation in hours
          initial_amplitude: float=0.1, # initial amplitude for the simulation. This is the ESRI value for constant darkness
          phase_at_midnight: float=1.65238233, # phase at midnight. Default value corresponds to a 8 hour darkness and 16 hour light schedule with wake at 8 am.
          ) -> List: # list with ESRI timepoints and ESRI values. Negative ESRI values are turned into NaNs
@@ -50,8 +51,11 @@ def esri(time: np.ndarray, # time in hours to use for the simulation
             simulation_time = np.arange(t, t + analysis_days*24, simulation_dt)
             simulation_light = np.interp(simulation_time, time, light_schedule)
             trajectory = model(simulation_time, initial_condition, simulation_light)
-            esri_value = trajectory.states[-1, 0]
+            esri_value = trajectory.states[-1, 0] # model amplitude at the end of the simulation
             esri_array[idx] = esri_value
         # clean up any negative values
         esri_array[esri_array < 0] = np.NaN
+        # if there's any NaNs, throw a warning thay probably dt was too small
+        if np.any(np.isnan(esri_array)):
+            warnings.warn(f'ESRI calculation failed for certain timepoints (NaN ESRI values). Try decreasing the time resolution of the `time` and `light_schedule` arrays.')
         return esri_time, esri_array
