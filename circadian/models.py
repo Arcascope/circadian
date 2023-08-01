@@ -1183,6 +1183,8 @@ class Skeldon23(CircadianModel):
             self.parameters = params
             if 'S0' in params:
                 self.current_sleep_state = params['S0'] # 0 for wake, 1 for sleep
+            else:
+                self.current_sleep_state = default_params['S0']
         else:
             self.current_sleep_state = default_params['S0'] # 0 for wake, 1 for sleep
         # sleep/wake
