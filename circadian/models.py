@@ -1185,8 +1185,10 @@ class Skeldon23(CircadianModel):
                 self.current_sleep_state = params['S0'] # 0 for wake, 1 for sleep
         else:
             self.current_sleep_state = default_params['S0'] # 0 for wake, 1 for sleep
-        # sleep/wake tracking
+        # sleep/wake
         self.sleep_state = np.array([self.current_sleep_state])
+        # light received by the retina (in lux)
+        self.received_light = np.array([])
 
     def integrate(self,
                   time: np.ndarray, # time points for integration. Time difference between each consecutive pair of values determines step size of the solver
@@ -1197,8 +1199,9 @@ class Skeldon23(CircadianModel):
         # input checking
         if input is not None:
             _light_input_checking(input)
-        # reset sleep state
+        # reset sleep state and received light
         self.sleep_state = np.array([self.current_sleep_state])
+        self.received_light = np.array([input[0]])
         return super().integrate(time, initial_condition, input)
 
     def step_rk4(self,
@@ -1208,6 +1211,8 @@ class Skeldon23(CircadianModel):
                 dt: float, # step size in hours 
                 ) -> np.ndarray:
         "Integrate the state of the model for one timestep using a fourth-order Runge-Kutta algorithm. Assumes a constant light value for the time step"
+        # store received light
+        self.received_light = np.append(self.received_light, (1.0 - self.current_sleep_state) * input)
         # calculate the derivative
         new_state = super().step_rk4(t, state, input, dt)
         # calculate the new sleep state
