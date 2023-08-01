@@ -1201,6 +1201,9 @@ class Skeldon23(CircadianModel):
         # input checking
         if input is not None:
             _light_input_checking(input)
+        # add additional warning if input has batch dimension
+        if initial_condition is not None and initial_condition.ndim >= 2:
+            raise ValueError("Skeldon23 model can't be run in batch mode. Please provide a single initial condition")
         # reset sleep state and received light
         self.sleep_state = np.array([self.current_sleep_state])
         self.received_light = np.array([input[0]])
