@@ -11,3 +11,5 @@ website:
         contents:
           - auto: "api/*"
         border: True
+      - text: "Contributing"
+        file: contributing.ipynb

@@ -128,3 +128,10 @@ plt.show()
 ```
 
 ![](index_files/figure-commonmark/cell-5-output-1.png)
+
+# Contributing
+
+We welcome contributions to circadian via issues, pull requests, or
+comments! Please see our [contributing
+guidelines](https://arcascope.github.io/circadian/contributing.html) for
+more information.
