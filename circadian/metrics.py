@@ -5,6 +5,7 @@ __all__ = ['esri', 'esri_trajectory']
 
 # %% ../nbs/api/04_metrics.ipynb 4
 import numpy as np
+from typing import List
 from .models import Hannay19
 from .utils import phase_ic_guess
 from .readers import WearableData
