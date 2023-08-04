@@ -330,4 +330,5 @@ d = { 'settings': { 'branch': 'main',
                                  'circadian.utils.split_missing_data': ('api/utils.html#split_missing_data', 'circadian/utils.py'),
                                  'circadian.utils.subtract_clock_times': ('api/utils.html#subtract_clock_times', 'circadian/utils.py'),
                                  'circadian.utils.times_to_angle': ('api/utils.html#times_to_angle', 'circadian/utils.py'),
-                                 'circadian.utils.timezone_mapper': ('api/utils.html#timezone_mapper', 'circadian/utils.py')}}}
+                                 'circadian.utils.timezone_mapper': ('api/utils.html#timezone_mapper', 'circadian/utils.py'),
+                                 'circadian.utils.utc_to_hrs': ('api/utils.html#utc_to_hrs', 'circadian/utils.py')}}}
