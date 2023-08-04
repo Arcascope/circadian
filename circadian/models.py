@@ -154,6 +154,8 @@ def _initial_condition_input_checking(initial_condition, num_states):
         raise TypeError("initial_condition must be numeric")
     if initial_condition.shape[0] != num_states:
         raise ValueError(f"initial_condition must have length {num_states}")
+    if np.any(np.isnan(initial_condition)):
+        raise ValueError("initial_condition must not contain NaNs")
     return True
 
 
@@ -168,6 +170,8 @@ def _model_input_checking(input, num_inputs, time):
     if num_inputs > 1:
         if input.shape[1] != num_inputs:
             raise ValueError(f"input must have {num_inputs} columns")
+    if np.any(np.isnan(input)):
+        raise ValueError("input must not contain NaNs")
 
     
 def _light_input_checking(light):
@@ -178,6 +182,8 @@ def _light_input_checking(light):
         raise ValueError("light must be a 1D array")
     if not np.issubdtype(light.dtype, np.number):
         raise TypeError("light must be numeric")
+    if np.any(np.isnan(light)):
+        raise ValueError("light must not contain NaNs")
     if not np.all(light >= 0):
         raise ValueError("light intensity must be nonnegative")
     return True
@@ -191,6 +197,8 @@ def _wake_input_checking(wake):
         raise ValueError("wake must be a 1D array")
     if not np.issubdtype(wake.dtype, np.number):
         raise TypeError("wake must be numeric")
+    if np.any(np.isnan(wake)):
+        raise ValueError("wake must not contain NaNs")
     if not np.all(wake >= 0) and not np.all(wake <= 1):
         raise ValueError("wake must be between 0 and 1")
     return True

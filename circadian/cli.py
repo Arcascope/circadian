@@ -21,7 +21,7 @@ from .models import Hannay19
 from .utils import phase_ic_guess
 from .utils import simple_norm_stepshr_sleep_classifier
 from .sleep import cluster_sleep_periods_scipy, sleep_midpoint
-from .readers import WearableData, read_standard_csv, read_standard_json
+from .readers import load_json, load_csv
 
 mytz = timezone('EST')
 
@@ -324,10 +324,10 @@ def main_esri():
 
 
     if args.json:
-        awObj = read_standard_json(args.json)
+        awObj = load_json(args.json)
 
     if args.csv:
-        awObj = read_standard_csv(args.csv)
+        awObj = load_csv(args.csv)
 
     if args.csv or args.json:
         if args.t1 or args.t2:
