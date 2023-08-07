@@ -22,6 +22,7 @@ import pandas as pd
 from numba import jit
 from typing import List
 from scipy import interpolate
+from scipy.stats import circmean
 from scipy.integrate import solve_ivp
 
 # %% ../nbs/api/07_utils.ipynb 5
@@ -65,7 +66,7 @@ def sleep_midpoint_and_duration(
 
     sleep_duration = np.mean(time[sleep_end_idxs] - time[sleep_start_idxs])
     sleep_midpoints = (time[sleep_start_idxs] + time[sleep_end_idxs]) / 2.0
-    mid_sleep_time = np.mean(np.mod(sleep_midpoints, 24.0))
+    mid_sleep_time = circmean(np.mod(sleep_midpoints, 24.0), high=24.0)
 
     return mid_sleep_time, sleep_duration
 

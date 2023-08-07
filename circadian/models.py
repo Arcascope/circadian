@@ -1185,7 +1185,7 @@ class Skeldon23(CircadianModel):
             }
         num_states = 4 # x, xc, n, H
         num_inputs = 1 # light
-        default_initial_condition = np.array([0.23995682, -1.1547196, 0.50529415, 12.83846474])
+        default_initial_condition = np.array([0.23995682, -1.1547196, 0.50529415, 12.83846474]) # condition at midnight for 16L, 8D schedule, S0 = 0
         super(Skeldon23, self).__init__(default_params, num_states, num_inputs, default_initial_condition)
         if params is not None:
             self.parameters = params
