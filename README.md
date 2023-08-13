@@ -5,6 +5,7 @@
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://arcascope.github.io/circadian/)
 ![CI](https://github.com/Arcascope/circadian/actions/workflows/test.yaml/badge.svg)
 [![Twitter](https://img.shields.io/twitter/url/https/twitter.com/arcascope.svg?style=social&label=Follow%20%40arcascope)](https://twitter.com/arcascope)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.8206871.svg)](https://doi.org/10.5281/zenodo.8206871)
 
 Welcome to `circadian`, a computational package for the simulation and
 analysis of circadian rhythms
@@ -135,3 +136,26 @@ We welcome contributions to circadian via issues, pull requests, or
 comments! Please see our [contributing
 guidelines](https://arcascope.github.io/circadian/contributing.html) for
 more information.
+
+# Citation
+
+If you find `circadian` useful, please cite as:
+
+``` bibtex
+@software{franco_tavella_2023_8206871,
+  author       = {Franco Tavella and
+                  Kevin Hannay and
+                  Olivia Walch},
+  title        = {{Arcascope/circadian: Refactoring of readers and 
+                   metrics modules}},
+  month        = aug,
+  year         = 2023,
+  publisher    = {Zenodo},
+  version      = {v1.0.2},
+  doi          = {10.5281/zenodo.8206871},
+  url          = {https://doi.org/10.5281/zenodo.8206871}
+}
+```
+
+Head to https://doi.org/10.5281/zenodo.8206871 for more information on
+the latest release.
