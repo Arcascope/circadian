@@ -11,6 +11,7 @@ import scipy as sp
 import numpy as np
 import pandas as pd
 from scipy import interpolate
+from scipy.stats import circmean
 from scipy.integrate import solve_ivp
 
 # %% ../nbs/api/07_utils.ipynb 5
@@ -30,6 +31,35 @@ def amplitude_percent_change(amplitude_1: float, # amplitude between (0, inf)
     return (amplitude_2 - amplitude_1) / amplitude_1 * 100
 
 # %% ../nbs/api/07_utils.ipynb 9
+def sleep_midpoint_and_duration(
+    time: np.ndarray, # array of time values
+    sleep_state: np.ndarray, # array of sleep state values
+) -> List[np.ndarray]:
+    "Calculate sleep duration and mid-sleep time"
+    if not isinstance(time, np.ndarray):
+        time = np.array(time)
+        raise ValueError("time must be a numpy array")
+    if not isinstance(sleep_state, np.ndarray):
+        sleep_state = np.array(sleep_state)
+        raise ValueError("sleep_state must be a numpy array")
+    if len(time) != len(sleep_state):
+        raise ValueError("time and sleep_state must have the same length")
+
+    sleep_start_idxs = np.where(np.diff(sleep_state) == 1)[0]
+    sleep_end_idxs = np.where(np.diff(sleep_state) == -1)[0] 
+    # trim any incomplete sleep windows
+    if sleep_start_idxs[0] > sleep_end_idxs[0]:
+        sleep_end_idxs = sleep_end_idxs[1:]
+    if sleep_start_idxs[-1] > sleep_end_idxs[-1]:
+        sleep_start_idxs = sleep_start_idxs[:-1]
+
+    sleep_duration = np.mean(time[sleep_end_idxs] - time[sleep_start_idxs])
+    sleep_midpoints = (time[sleep_start_idxs] + time[sleep_end_idxs]) / 2.0
+    mid_sleep_time = circmean(np.mod(sleep_midpoints, 24.0), high=24.0)
+
+    return mid_sleep_time, sleep_duration
+
+# %% ../nbs/api/07_utils.ipynb 11
 def utc_to_hrs(d: pd.Timestamp # UTC timestamp to convert
                ) -> float: # hours since midnight
     "Convert UTC timestamp to hours since midnight"
@@ -84,7 +114,7 @@ def cut_phases_12(p):
 
 def convert_binary(x, breakpoint: float = 0.50):
     x[x <= breakpoint] = 0.0
-    x[x > breakpoint] = 1.0
+    x[x > breakpoint] = 1.1
     return x
 
 
