@@ -263,6 +263,8 @@ d = { 'settings': { 'branch': 'main',
                                  'circadian.utils.phase_coherence_clock': ('api/utils.html#phase_coherence_clock', 'circadian/utils.py'),
                                  'circadian.utils.phase_difference': ('api/utils.html#phase_difference', 'circadian/utils.py'),
                                  'circadian.utils.phase_ic_guess': ('api/utils.html#phase_ic_guess', 'circadian/utils.py'),
+                                 'circadian.utils.sleep_midpoint_and_duration': ( 'api/utils.html#sleep_midpoint_and_duration',
+                                                                                  'circadian/utils.py'),
                                  'circadian.utils.subtract_clock_times': ('api/utils.html#subtract_clock_times', 'circadian/utils.py'),
                                  'circadian.utils.times_to_angle': ('api/utils.html#times_to_angle', 'circadian/utils.py'),
                                  'circadian.utils.utc_to_hrs': ('api/utils.html#utc_to_hrs', 'circadian/utils.py')}}}
