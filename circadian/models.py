@@ -226,6 +226,7 @@ class CircadianModel(ABC):
         self.__default_initial_condition = default_initial_condition
         self._trajectory = None
         self._initial_condition = default_initial_condition
+        self._min_marker_distance_in_hours = 13.0 # minimum allowed distance between CBTmin values
 
 
     @property
@@ -1352,7 +1353,7 @@ def cbt(self,
             raise ValueError("trajectory must be a DynamicalTrajectory")
     dt = np.diff(trajectory.time)[0]
     inverted_x = -1 * trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(13.0 / dt)) # 13 hours min separation between troughs
+    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
     cbtmin_times = trajectory.time[cbt_min_idxs]
     _check_cbtmin_spacing(cbtmin_times)
     return cbtmin_times
