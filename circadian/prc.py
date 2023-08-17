@@ -117,7 +117,7 @@ class PhaseResponseCurveLight:
             9850*make_pulse(t, CR+8+8-2.5+24.0, CR+8+8+2.5+24.0)
         return(val)
     
-    def light_czeiler_type0(t: float, CR: float):
+    def light_czeisler_type0(t: float, CR: float):
         roomLight = 150.0
         afterLight = 150.0  # 150.0
         beforeLight = 150.0  # 150.0
@@ -180,7 +180,7 @@ class PRCFinder:
         CRFinal = 30.0
         tend = 72.0 + 8.0 + 30.0 + CRFinal
         time = np.arange(0, tend, 0.10)
-        light_vals = np.array([PhaseResponseCurveLight.light_czeiler_type0(t, CRlength) for t in time])
+        light_vals = np.array([PhaseResponseCurveLight.light_czeisler_type0(t, CRlength) for t in time])
         trajectory = model(time, initial_value, light_vals)
         CBT = model.cbt()
         shift = (CBT[0] - CBT[-1]) % 24.0 #finds a neg number between zero and -24.0
