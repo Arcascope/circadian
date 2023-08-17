@@ -18,7 +18,7 @@ def generate_activity_from_light(
     sigma_l: float=7.5, # std of low activity levels.
     sigma_h: float=30.0, # std of high activity levels.
     sigma_s: float=2.0, # std of activity during sleep.
-    active_level: float=0.5, # person's activity level from 0 to 1.
+    active_level: float=0.5, # person's activity level from 0 to 1. Represents the probability of choosing from the high or low activity distributions at any point in time. Values close to 1 increase the proportion of high activity values.
 ) -> np.ndarray:
     "Generates an 'activity' schedule from an input light schedule. The activity schedule produced is a corrupted version of the light schedule."
     # input validation
@@ -59,7 +59,7 @@ def generate_activity_from_light(
 
     # create the activity vector the same size as time
     activity = np.zeros(time.shape)
-    for t in range(1, time.shape[0]):
+    for t in range(time.shape[0]):
         if light(time[t]) == 0:
             activity[t] = np.abs(np.random.normal(mu_s, sigma_s))
         elif light(time[t]) > 0:
