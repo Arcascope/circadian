@@ -175,7 +175,7 @@ def __sub__(self,
 # %% ../nbs/api/01_lights.ipynb 8
 @patch_to(LightSchedule)
 def concatenate_at(self,
-                   schedule : 'LightSchedule', # another LightSchedule object
+                   schedule: 'LightSchedule', # another LightSchedule object
                    timepoint: float, # timepoint (in hours) at which schedules are concatenated
                    shift_schedule: bool = True, # if True, then the schedule is shifted by the timepoint value
                    ) -> 'LightSchedule':
@@ -432,4 +432,57 @@ def SocialJetlag(lux: float=150.0, # intensity of the light in lux
     total_schedule = regular_days.concatenate_at(jetlag_days, timepoint_change, shift_schedule=False)
     final_schedule = LightSchedule(total_schedule, period=overall_period)
         
+    return final_schedule
+
+# %% ../nbs/api/01_lights.ipynb 14
+@patch_to(LightSchedule)
+def Hilaire12(first_constant_routine_duration: float, # duration of the constant routine in hours
+              second_constant_routine_duration: float, # duration of the second constant routine in hours
+              regular_lux: float=90, # intensity of the light in lux before the constant routine
+              constant_routine_lux: float=3, # intensity of the light in lux during the constant routine
+              pulse_duration: float=1, # duration of the light pulse in hours 
+              pulse_lux: float=8000, # intensity of the light pulse in lux
+              ) -> 'LightSchedule':
+    "Create a light schedule matching the Hilaire et al. 2012 experimental protocol. Does not include baseline days."
+    # type checking
+    if not isinstance(first_constant_routine_duration, (float, int)):
+        raise TypeError(f"constant_routine_duration must be a nonnegative float or int, got {type(first_constant_routine_duration)}")
+    elif first_constant_routine_duration < 0:
+        raise ValueError(f"constant_routine_duration must be a nonnegative float or int, got {first_constant_routine_duration}")
+    if not isinstance(second_constant_routine_duration, (float, int)):
+        raise TypeError(f"second_constant_routine_duration must be a nonnegative float or int, got {type(second_constant_routine_duration)}")
+    elif second_constant_routine_duration < 0:
+        raise ValueError(f"second_constant_routine_duration must be a nonnegative float or int, got {second_constant_routine_duration}")
+    if not isinstance(regular_lux, (float, int)):
+        raise TypeError(f"regular_lux must be a nonnegative float or int, got {type(regular_lux)}")
+    elif regular_lux < 0:
+        raise ValueError(f"regular_lux must be a nonnegative float or int, got {regular_lux}")
+    if not isinstance(constant_routine_lux, (float, int)):
+        raise TypeError(f"constant_routine_lux must be a nonnegative float or int, got {type(constant_routine_lux)}")
+    elif constant_routine_lux < 0:
+        raise ValueError(f"constant_routine_lux must be a nonnegative float or int, got {constant_routine_lux}")
+    if not isinstance(pulse_duration, (float, int)):
+        raise TypeError(f"pulse_duration must be a nonnegative float or int, got {type(pulse_duration)}")
+    elif pulse_duration < 0:
+        raise ValueError(f"pulse_duration must be a nonnegative float or int, got {pulse_duration}")
+    if not isinstance(pulse_lux, (float, int)):
+        raise TypeError(f"pulse_lux must be a nonnegative float or int, got {type(pulse_lux)}")
+    elif pulse_lux < 0:
+        raise ValueError(f"pulse_lux must be a nonnegative float or int, got {pulse_lux}")
+    # create the schedule 
+    first_baseline_day = LightSchedule(regular_lux)
+    second_baseline_day = LightSchedule.from_pulse(0, 0, 8) + LightSchedule.from_pulse(regular_lux, 8, 16)
+    third_baseline_day = LightSchedule.from_pulse(0, 0, 8) + LightSchedule.from_pulse(regular_lux, 8, 8) + LightSchedule.from_pulse(constant_routine_lux, 16, 8)
+    constant_routine_1 = LightSchedule.from_pulse(0, 0, 8) + LightSchedule.from_pulse(constant_routine_lux, 8, first_constant_routine_duration)
+    pulse_region = LightSchedule.from_pulse(0, 0, 8) + LightSchedule.from_pulse(constant_routine_lux, 8, 16) + LightSchedule.from_pulse(0, 16, 8)
+    pulse_region = pulse_region + LightSchedule.from_pulse(pulse_lux - constant_routine_lux, 16 - pulse_duration / 2, pulse_duration)
+    constant_routine_2 = LightSchedule.from_pulse(constant_routine_lux, 0, second_constant_routine_duration)
+
+    pulse_region_duration = 8 + 16 + 8
+    final_schedule = first_baseline_day.concatenate_at(second_baseline_day, 24)
+    final_schedule = final_schedule.concatenate_at(third_baseline_day, 48)
+    final_schedule = final_schedule.concatenate_at(constant_routine_1, 72)
+    final_schedule = final_schedule.concatenate_at(pulse_region, 72 + 8 + first_constant_routine_duration)
+    final_schedule = final_schedule.concatenate_at(constant_routine_2, 72 + 8 + first_constant_routine_duration + pulse_region_duration)
+
     return final_schedule
