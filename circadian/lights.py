@@ -135,8 +135,8 @@ class LightSchedule:
             baseline = float(baseline)
         # create the light schedule
         def fn(time):
-            baseline_zone = (time < start) | (time > start + duration)
-            light_zone = (time >= start) & (time <= start + duration)
+            baseline_zone = (time < start) | (time >= start + duration)
+            light_zone = (time >= start) & (time < start + duration)
             conditions = [baseline_zone, light_zone]
             values = [baseline, lux]
             return np.piecewise(time, conditions, values)
