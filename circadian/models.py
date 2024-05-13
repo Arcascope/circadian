@@ -132,8 +132,8 @@ def _parameter_input_checking(parameters):
     for key, value in parameters.items():
         if not isinstance(key, str):
             raise TypeError("keys of parameters must be strings")
-        if not isinstance(value, (int, float)):
-            raise TypeError("values of parameters must be numeric")
+        if not isinstance(value, (int, float, type(None))):
+            raise TypeError("values of parameters must be numeric or None")
     return True
 
 
@@ -1183,7 +1183,7 @@ class Skeldon23(CircadianModel):
             # dlmo calculation
             'cbt_to_dlmo': 7.0,
             # forced wake up
-            'forced_wakeup_by_light': False, 'forced_wakeup_light_threshold': 0.0,
+            'forced_wakeup_light_threshold': None,
             }
         num_states = 4 # x, xc, n, H
         num_inputs = 1 # light
@@ -1195,8 +1195,16 @@ class Skeldon23(CircadianModel):
                 self.current_sleep_state = params['S0'] # 0 for wake, 1 for sleep
             else:
                 self.current_sleep_state = default_params['S0']
+            if 'forced_wakeup_light_threshold' in params:
+                self.forced_wakeup_by_light = params['forced_wakeup_light_threshold'] is not None
+                self.forced_wakeup_light_threshold = params['forced_wakeup_light_threshold']
+            else:
+                self.forced_wakeup_by_light = default_params['forced_wakeup_light_threshold'] is not None
+                self.forced_wakeup_light_threshold = default_params['forced_wakeup_light_threshold']
         else:
             self.current_sleep_state = default_params['S0'] # 0 for wake, 1 for sleep
+            self.forced_wakeup_by_light = default_params['forced_wakeup_light_threshold'] is not None
+            self.forced_wakeup_light_threshold = default_params['forced_wakeup_light_threshold']
         # sleep/wake
         self.sleep_state = np.array([self.current_sleep_state])
         # light received by the retina (in lux)
