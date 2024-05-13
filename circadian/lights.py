@@ -521,9 +521,10 @@ def Chang14(dim_lux: float=3.0, # intensity of the light in reading sessions and
     first_day = LightSchedule.from_pulse(typical_indoor_lux, 6, 6) + LightSchedule.from_pulse(dim_lux, 12, 10)
     reading_lux = [ereader_lux, book_lux] if first_reading_condition == "eReader" else [book_lux, ereader_lux]
     second_day = LightSchedule.from_pulse(dim_lux, 6, 6) + LightSchedule.from_pulse(typical_indoor_lux, 12, 6)
+    second_day = second_day + LightSchedule.from_pulse(dim_lux, 18, 4)
     second_day_first_condition = second_day + LightSchedule.from_pulse(reading_lux[0], 18, 4)
     second_day_second_condition = second_day + LightSchedule.from_pulse(reading_lux[1], 18, 4)
-    reading_day_baseline = LightSchedule.from_pulse(typical_indoor_lux, 6, 12)
+    reading_day_baseline = LightSchedule.from_pulse(typical_indoor_lux, 6, 12) + LightSchedule.from_pulse(dim_lux, 18, 4)
     reading_day_first_condition = reading_day_baseline + LightSchedule.from_pulse(reading_lux[0], 18, 4)
     reading_day_second_condition = reading_day_baseline + LightSchedule.from_pulse(reading_lux[1], 18, 4)
 
