@@ -1248,11 +1248,13 @@ class Skeldon23(CircadianModel):
             if H <= H_minus:
                 new_sleep_state = 0.0
             # if lights are on, wake up
-            elif input > 0.0:
-                new_sleep_state = 0.0
+            # elif input > 0.0:
+            #     new_sleep_state = 0.0
                 # new_state[3] = H_minus
         else:
             raise ValueError("current sleep state must be 0 or 1")
+        if input > 0.0:
+            new_sleep_state = 0.0
         # update current sleep state and add value to sleep state array
         self.current_sleep_state = new_sleep_state 
         self.sleep_state = np.append(self.sleep_state, new_sleep_state)
