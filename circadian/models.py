@@ -1182,6 +1182,8 @@ class Skeldon23(CircadianModel):
             'S0': 0.0,
             # dlmo calculation
             'cbt_to_dlmo': 7.0,
+            # forced wake up
+            'forced_wakeup_by_light': False, 'forced_wakeup_light_threshold': 0.0,
             }
         num_states = 4 # x, xc, n, H
         num_inputs = 1 # light
@@ -1249,9 +1251,10 @@ class Skeldon23(CircadianModel):
                 new_sleep_state = 0.0
         else:
             raise ValueError("current sleep state must be 0 or 1")
-        # if lights are on, wake up
-        if input > 0.0:
-            new_sleep_state = 0.0     
+        if self.forced_wakeup_by_light:
+            # if light is above threshold, wake up
+            if input > self.forced_wakeup_light_threshold:
+                new_sleep_state = 0.0
         # update current sleep state and add value to sleep state array
         self.current_sleep_state = new_sleep_state 
         self.sleep_state = np.append(self.sleep_state, new_sleep_state)
