@@ -1222,7 +1222,7 @@ def derv(self,
      taux_term = pow(24.0 / (0.99729 * self.taux), 2) + self.k * Bhat 
      # Melatonin synthesis - Adapted from Breslow et al. 2013 (https://doi.org/10.1177%2F0748730412468081)
      phase = np.arctan2(xc, x)
-     if phase < self.phi_on and phase > self.phi_off:
+     if phase < self.phi_on or phase > self.phi_off:
           activation = 1.0 - np.exp(-self.delta * np.mod(self.phi_on - phase, 2*np.pi))
           normalization = 1.0 - np.exp(-self.delta * np.mod(self.phi_on - self.phi_off, 2*np.pi))
           A = self.a * activation / normalization
