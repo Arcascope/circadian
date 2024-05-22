@@ -1180,7 +1180,7 @@ class Breslow13(CircadianModel):
             'betaIP': 0.000783 * 3600.0, 'betaCP': 0.000335 * 3600.0,
             'betaAP': 0.000162 * 3600.0, 'a': 0.0010422 * 3600.0, 
             # threshold phases have been confined to [-pi, pi]
-            'phi_on': -1.44, 'phi_off': 2.78,
+            'phi_on': 6.113 - 2 * np.pi, 'phi_off': 4.352 - 2 * np.pi,
             'delta': 600.0, 'Mmax': 0.019513, 'Hsat': 861.0, 'sigma': 50.0, 
             'phi_ref': 0.97, 'cbt_to_dlmo': 7.0,
             }
@@ -1243,8 +1243,8 @@ def derv(self,
      M = self.melatonin_drive(H2)
      S_H1_B = self.avoid_negative_H1(H1, B)
 
-     phase = np.arctan2(xc, x)
-     if phase < self.phi_on or phase > self.phi_off:
+     phase = np.arctan2(x, xc) # note this is the opposite to all other models (here xc is on the x-axis)
+     if phase < self.phi_on and phase > self.phi_off:
           activation = 1.0 - np.exp(-self.delta * np.mod(self.phi_on - phase, 2*np.pi))
           normalization = 1.0 - np.exp(-self.delta * np.mod(self.phi_on - self.phi_off, 2*np.pi))
           A = self.a * activation / normalization
