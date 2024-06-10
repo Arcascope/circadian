@@ -578,8 +578,9 @@ def cbt(self,
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
+    dt = np.diff(trajectory.time)[0]
     inverted_x = -1*trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x)
+    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
     cbtmin_times = trajectory.time[cbt_min_idxs]
     _check_cbtmin_spacing(cbtmin_times)
     return cbtmin_times
@@ -716,8 +717,9 @@ def cbt(self,
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
+    dt = np.diff(trajectory.time)[0]
     inverted_x = -np.cos(trajectory.states[:,1])
-    cbt_min_idxs, _ = find_peaks(inverted_x)
+    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
     cbtmin_times = trajectory.time[cbt_min_idxs]
     _check_cbtmin_spacing(cbtmin_times)
     return cbtmin_times
@@ -862,8 +864,9 @@ def cbt(self,
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
+    dt = np.diff(trajectory.time)[0]
     inverted_x = -np.cos(trajectory.states[:,2])
-    cbt_min_idxs, _ = find_peaks(inverted_x)
+    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
     cbtmin_times = trajectory.time[cbt_min_idxs]
     _check_cbtmin_spacing(cbtmin_times)
     return cbtmin_times
@@ -996,8 +999,9 @@ def cbt(self,
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
+    dt = np.diff(trajectory.time)[0]
     inverted_x = -1*trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x)
+    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
     cbtmin_times = trajectory.time[cbt_min_idxs] + self.phi_ref
     _check_cbtmin_spacing(cbtmin_times)
     return cbtmin_times
@@ -1146,8 +1150,9 @@ def cbt(self,
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
-    inverted_x = -1 * trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x)
+    dt = np.diff(trajectory.time)[0]
+    inverted_x = -1*trajectory.states[:,0]
+    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
     cbtmin_times = trajectory.time[cbt_min_idxs] + self.phi_ref
     _check_cbtmin_spacing(cbtmin_times)
     return cbtmin_times
