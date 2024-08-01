@@ -494,6 +494,8 @@ def Chang14(dim_lux: float=3.0, # intensity of the light in reading sessions and
             ereader_lux: float=31.73, # intensity of the light during the eReader session. Photopic lux value taken from article
             book_lux: float=0.91, # intensity of the light during the book reading session. Photopic lux value taken from article
             first_reading_condition: str="eReader", # Reading condition for the first set of days. Second reading condition is the opposite
+            reading_start_time: float=18.0, # time of the day when the reading sessions start
+            reading_duration: float=4.0, # duration of the reading sessions in hours
             ) -> 'LightSchedule':
     "Create a light schedule matching the Chang et al. 2014 experimental protocol for studying the effect of eReaders on sleep."
     # type checking
@@ -517,16 +519,20 @@ def Chang14(dim_lux: float=3.0, # intensity of the light in reading sessions and
         raise TypeError(f"first_reading_condition must be a string, got {type(first_reading_condition)}")
     if first_reading_condition not in ["eReader", "Book"]:
         raise ValueError(f"first_reading_condition must be 'eReader' or 'Book', got {first_reading_condition}")
+    if not isinstance(reading_start_time, (float, int)):
+        raise TypeError(f"reading_start_time must be a float or int, got {type(reading_start_time)}")
+    if not isinstance(reading_duration, (float, int)):
+        raise TypeError(f"reading_duration must be a float or int, got {type(reading_duration)}")
     # create the schedule 
     first_day = LightSchedule.from_pulse(typical_indoor_lux, 6, 6) + LightSchedule.from_pulse(dim_lux, 12, 10)
     reading_lux = [ereader_lux, book_lux] if first_reading_condition == "eReader" else [book_lux, ereader_lux]
     second_day = LightSchedule.from_pulse(dim_lux, 6, 6) + LightSchedule.from_pulse(typical_indoor_lux, 12, 6)
     second_day = second_day + LightSchedule.from_pulse(dim_lux, 18, 4)
-    second_day_first_condition = second_day + LightSchedule.from_pulse(reading_lux[0], 18, 4)
-    second_day_second_condition = second_day + LightSchedule.from_pulse(reading_lux[1], 18, 4)
+    second_day_first_condition = second_day + LightSchedule.from_pulse(reading_lux[0], reading_start_time, reading_duration)
+    second_day_second_condition = second_day + LightSchedule.from_pulse(reading_lux[1], reading_start_time, reading_duration)
     reading_day_baseline = LightSchedule.from_pulse(typical_indoor_lux, 6, 12) + LightSchedule.from_pulse(dim_lux, 18, 4)
-    reading_day_first_condition = reading_day_baseline + LightSchedule.from_pulse(reading_lux[0], 18, 4)
-    reading_day_second_condition = reading_day_baseline + LightSchedule.from_pulse(reading_lux[1], 18, 4)
+    reading_day_first_condition = reading_day_baseline + LightSchedule.from_pulse(reading_lux[0], reading_start_time, reading_duration)
+    reading_day_second_condition = reading_day_baseline + LightSchedule.from_pulse(reading_lux[1], reading_start_time, reading_duration)
 
     # first reading condition
     final_schedule = first_day.concatenate_at(second_day_first_condition, 24)
