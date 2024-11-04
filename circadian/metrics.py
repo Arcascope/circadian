@@ -54,7 +54,7 @@ def esri(time: np.ndarray, # time in hours to use for the simulation
             esri_value = trajectory.states[-1, 0] # model amplitude at the end of the simulation
             esri_array[idx] = esri_value
         # clean up any negative values
-        esri_array[esri_array < 0] = np.NaN
+        esri_array[esri_array < 0] = np.nan
         # if there's any NaNs, throw a warning thay probably dt was too small
         if np.any(np.isnan(esri_array)):
             warnings.warn(f'ESRI calculation failed for certain timepoints (NaN ESRI values). Try decreasing the time resolution of the `time` and `light_schedule` arrays.')
