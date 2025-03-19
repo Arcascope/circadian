@@ -5,7 +5,7 @@
 # %% auto 0
 __all__ = ['phase_difference', 'amplitude_percent_change', 'sleep_midpoint_and_duration', 'utc_to_hrs', 'phase_ic_guess',
            'abs_hour_diff', 'cut_phases_12', 'convert_binary', 'cal_days_diff', 'parse_dt', 'phase_coherence',
-           'phase_coherence_clock', 'angle_difference', 'subtract_clock_times', 'times_to_angle', 'outdoor_light']
+           'phase_coherence_clock', 'angle_difference', 'subtract_clock_times', 'times_to_angle']
 
 # %% ../nbs/api/07_utils.ipynb 4
 import scipy as sp
@@ -160,10 +160,3 @@ def times_to_angle(time_vector: np.ndarray):
     rad_vector = np.fmod(time_vector, 24.0) * np.pi/12.0
     Z = np.sum(np.exp(rad_vector*1j))/len(rad_vector)
     return(np.abs(Z), np.angle(Z))
-
-# %% ../nbs/api/07_utils.ipynb 16
-def outdoor_light(t: float, sunrise_time: float, sunset_time: float, peak_lux: float, baseline_lux: float, slope: float):
-    rise = np.tanh(slope * (t - sunrise_time))
-    set = np.tanh(slope * (sunset_time - t))
-    amplitude = (peak_lux - baseline_lux) / 2
-    return baseline_lux + amplitude * (rise + set)
