@@ -12,6 +12,7 @@ import numpy as np
 import pylab as plt
 from typing import Callable
 from fastcore.basics import patch_to
+from .utils import outdoor_light
 
 # %% ../nbs/api/01_lights.ipynb 5
 class LightSchedule:
