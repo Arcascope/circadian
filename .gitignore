@@ -155,3 +155,6 @@ checklink/cookies.txt
 
 # VScode workspace
 *.code-workspace
+
+# Environment
+.venv_circadian

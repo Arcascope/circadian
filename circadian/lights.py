@@ -135,8 +135,8 @@ class LightSchedule:
             baseline = float(baseline)
         # create the light schedule
         def fn(time):
-            baseline_zone = (time < start) | (time > start + duration)
-            light_zone = (time >= start) & (time <= start + duration)
+            baseline_zone = (time < start) | (time >= start + duration)
+            light_zone = (time >= start) & (time < start + duration)
             conditions = [baseline_zone, light_zone]
             values = [baseline, lux]
             return np.piecewise(time, conditions, values)
@@ -175,7 +175,7 @@ def __sub__(self,
 # %% ../nbs/api/01_lights.ipynb 8
 @patch_to(LightSchedule)
 def concatenate_at(self,
-                   schedule : 'LightSchedule', # another LightSchedule object
+                   schedule: 'LightSchedule', # another LightSchedule object
                    timepoint: float, # timepoint (in hours) at which schedules are concatenated
                    shift_schedule: bool = True, # if True, then the schedule is shifted by the timepoint value
                    ) -> 'LightSchedule':
@@ -432,4 +432,119 @@ def SocialJetlag(lux: float=150.0, # intensity of the light in lux
     total_schedule = regular_days.concatenate_at(jetlag_days, timepoint_change, shift_schedule=False)
     final_schedule = LightSchedule(total_schedule, period=overall_period)
         
+    return final_schedule
+
+# %% ../nbs/api/01_lights.ipynb 14
+@patch_to(LightSchedule)
+def Hilaire12(first_constant_routine_duration: float, # duration of the constant routine in hours
+              second_constant_routine_duration: float, # duration of the second constant routine in hours
+              regular_lux: float=90, # intensity of the light in lux before the constant routine
+              constant_routine_lux: float=3, # intensity of the light in lux during the constant routine
+              pulse_duration: float=1, # duration of the light pulse in hours 
+              pulse_lux: float=8000, # intensity of the light pulse in lux
+              ) -> 'LightSchedule':
+    "Create a light schedule matching the Hilaire et al. 2012 experimental protocol. Does not include baseline days."
+    # type checking
+    if not isinstance(first_constant_routine_duration, (float, int)):
+        raise TypeError(f"constant_routine_duration must be a nonnegative float or int, got {type(first_constant_routine_duration)}")
+    elif first_constant_routine_duration < 0:
+        raise ValueError(f"constant_routine_duration must be a nonnegative float or int, got {first_constant_routine_duration}")
+    if not isinstance(second_constant_routine_duration, (float, int)):
+        raise TypeError(f"second_constant_routine_duration must be a nonnegative float or int, got {type(second_constant_routine_duration)}")
+    elif second_constant_routine_duration < 0:
+        raise ValueError(f"second_constant_routine_duration must be a nonnegative float or int, got {second_constant_routine_duration}")
+    if not isinstance(regular_lux, (float, int)):
+        raise TypeError(f"regular_lux must be a nonnegative float or int, got {type(regular_lux)}")
+    elif regular_lux < 0:
+        raise ValueError(f"regular_lux must be a nonnegative float or int, got {regular_lux}")
+    if not isinstance(constant_routine_lux, (float, int)):
+        raise TypeError(f"constant_routine_lux must be a nonnegative float or int, got {type(constant_routine_lux)}")
+    elif constant_routine_lux < 0:
+        raise ValueError(f"constant_routine_lux must be a nonnegative float or int, got {constant_routine_lux}")
+    if not isinstance(pulse_duration, (float, int)):
+        raise TypeError(f"pulse_duration must be a nonnegative float or int, got {type(pulse_duration)}")
+    elif pulse_duration < 0:
+        raise ValueError(f"pulse_duration must be a nonnegative float or int, got {pulse_duration}")
+    if not isinstance(pulse_lux, (float, int)):
+        raise TypeError(f"pulse_lux must be a nonnegative float or int, got {type(pulse_lux)}")
+    elif pulse_lux < 0:
+        raise ValueError(f"pulse_lux must be a nonnegative float or int, got {pulse_lux}")
+    # create the schedule 
+    first_baseline_day = LightSchedule(regular_lux)
+    second_baseline_day = LightSchedule.from_pulse(0, 0, 8) + LightSchedule.from_pulse(regular_lux, 8, 16)
+    third_baseline_day = LightSchedule.from_pulse(0, 0, 8) + LightSchedule.from_pulse(regular_lux, 8, 8) + LightSchedule.from_pulse(constant_routine_lux, 16, 8)
+    constant_routine_1 = LightSchedule.from_pulse(0, 0, 8) + LightSchedule.from_pulse(constant_routine_lux, 8, first_constant_routine_duration)
+    pulse_region = LightSchedule.from_pulse(0, 0, 8) + LightSchedule.from_pulse(constant_routine_lux, 8, 16) + LightSchedule.from_pulse(0, 16, 8)
+    pulse_region = pulse_region + LightSchedule.from_pulse(pulse_lux - constant_routine_lux, 16 - pulse_duration / 2, pulse_duration)
+    constant_routine_2 = LightSchedule.from_pulse(constant_routine_lux, 0, second_constant_routine_duration)
+
+    pulse_region_duration = 8 + 16 + 8
+    final_schedule = first_baseline_day.concatenate_at(second_baseline_day, 24)
+    final_schedule = final_schedule.concatenate_at(third_baseline_day, 48)
+    final_schedule = final_schedule.concatenate_at(constant_routine_1, 72)
+    final_schedule = final_schedule.concatenate_at(pulse_region, 72 + 8 + first_constant_routine_duration)
+    final_schedule = final_schedule.concatenate_at(constant_routine_2, 72 + 8 + first_constant_routine_duration + pulse_region_duration)
+
+    return final_schedule
+
+# %% ../nbs/api/01_lights.ipynb 15
+@patch_to(LightSchedule)
+def Chang14(dim_lux: float=3.0, # intensity of the light in reading sessions and constant protocols 
+            typical_indoor_lux: float=90.0, # intensity of the light during wakefulness 
+            ereader_lux: float=31.73, # intensity of the light during the eReader session. Photopic lux value taken from article
+            book_lux: float=0.91, # intensity of the light during the book reading session. Photopic lux value taken from article
+            first_reading_condition: str="eReader", # Reading condition for the first set of days. Second reading condition is the opposite
+            reading_start_time: float=18.0, # time of the day when the reading sessions start
+            reading_duration: float=4.0, # duration of the reading sessions in hours
+            ) -> 'LightSchedule':
+    "Create a light schedule matching the Chang et al. 2014 experimental protocol for studying the effect of eReaders on sleep."
+    # type checking
+    if not isinstance(dim_lux, (float, int)):
+        raise TypeError(f"dim_lux must be a nonnegative float or int, got {type(dim_lux)}")
+    elif dim_lux < 0:
+        raise ValueError(f"dim_lux must be a nonnegative float or int, got {dim_lux}")
+    if not isinstance(typical_indoor_lux, (float, int)):
+        raise TypeError(f"typical_indoor_lux must be a nonnegative float or int, got {type(typical_indoor_lux)}")
+    elif typical_indoor_lux < 0:
+        raise ValueError(f"typical_indoor_lux must be a nonnegative float or int, got {typical_indoor_lux}")
+    if not isinstance(ereader_lux, (float, int)):
+        raise TypeError(f"ereader_lux must be a nonnegative float or int, got {type(ereader_lux)}")
+    elif ereader_lux < 0:
+        raise ValueError(f"ereader_lux must be a nonnegative float or int, got {ereader_lux}")
+    if not isinstance(book_lux, (float, int)):
+        raise TypeError(f"book_lux must be a nonnegative float or int, got {type(book_lux)}")
+    elif book_lux < 0:
+        raise ValueError(f"book_lux must be a nonnegative float or int, got {book_lux}")
+    if not isinstance(first_reading_condition, str):
+        raise TypeError(f"first_reading_condition must be a string, got {type(first_reading_condition)}")
+    if first_reading_condition not in ["eReader", "Book"]:
+        raise ValueError(f"first_reading_condition must be 'eReader' or 'Book', got {first_reading_condition}")
+    if not isinstance(reading_start_time, (float, int)):
+        raise TypeError(f"reading_start_time must be a float or int, got {type(reading_start_time)}")
+    if not isinstance(reading_duration, (float, int)):
+        raise TypeError(f"reading_duration must be a float or int, got {type(reading_duration)}")
+    # create the schedule 
+    first_day = LightSchedule.from_pulse(typical_indoor_lux, 6, 6) + LightSchedule.from_pulse(dim_lux, 12, 10)
+    reading_lux = [ereader_lux, book_lux] if first_reading_condition == "eReader" else [book_lux, ereader_lux]
+    second_day = LightSchedule.from_pulse(dim_lux, 6, 6) + LightSchedule.from_pulse(typical_indoor_lux, 12, 6)
+    second_day = second_day + LightSchedule.from_pulse(dim_lux, 18, 4)
+    second_day_first_condition = second_day + LightSchedule.from_pulse(reading_lux[0], reading_start_time, reading_duration)
+    second_day_second_condition = second_day + LightSchedule.from_pulse(reading_lux[1], reading_start_time, reading_duration)
+    reading_day_baseline = LightSchedule.from_pulse(typical_indoor_lux, 6, 12) + LightSchedule.from_pulse(dim_lux, 18, 4)
+    reading_day_first_condition = reading_day_baseline + LightSchedule.from_pulse(reading_lux[0], reading_start_time, reading_duration)
+    reading_day_second_condition = reading_day_baseline + LightSchedule.from_pulse(reading_lux[1], reading_start_time, reading_duration)
+
+    # first reading condition
+    final_schedule = first_day.concatenate_at(second_day_first_condition, 24)
+    for i in range(4):
+        final_schedule = final_schedule.concatenate_at(reading_day_first_condition, 48 + 24*i)
+    # second reading condition
+    final_schedule = final_schedule.concatenate_at(first_day, 48 + 24*4)
+    final_schedule = final_schedule.concatenate_at(second_day_second_condition, 48 + 24*5)
+    for i in range(4):
+        final_schedule = final_schedule.concatenate_at(reading_day_second_condition, 48 + 24*6 + 24*i)
+    # final days
+    final_schedule = final_schedule.concatenate_at(first_day, 48 + 24*10)
+    final_schedule = final_schedule.concatenate_at(second_day, 48 + 24*11)
+
     return final_schedule
