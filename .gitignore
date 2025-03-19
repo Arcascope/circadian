@@ -152,3 +152,6 @@ checklink/cookies.txt
 
 # Pypi credentials
 .pypirc
+
+# VScode workspace
+*.code-workspace
