@@ -1,9 +1,9 @@
+setuptools==65.5.0
 fastcore==1.5.29
 ipython==8.14.0
 jupyter==1.0.0
 matplotlib==3.7.2
 nbdev==2.3.12
-numpy==1.24.4
+numpy==1.26.4
 pandas==2.0.3
-scipy==1.11.1
-setuptools==65.5.0
+scipy==1.15.2
