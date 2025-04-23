@@ -153,5 +153,8 @@ checklink/cookies.txt
 # Pypi credentials
 .pypirc
 
+# VScode workspace
+*.code-workspace
+
 # Environment
 .venv_circadian
