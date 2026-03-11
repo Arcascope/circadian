@@ -1,6 +1,6 @@
-from pkg_resources import parse_version
+from packaging.version import Version as parse_version
 from configparser import ConfigParser
-import setuptools 
+import setuptools
 from setuptools import Extension
 assert parse_version(setuptools.__version__)>=parse_version('36.2')
 
