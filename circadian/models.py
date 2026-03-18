@@ -328,7 +328,10 @@ def integrate(self,
     # input checking
     _time_input_checking(time)
     if input is None:
-        raise ValueError("a model input must be provided via the input argument")
+        if self._num_inputs == 1:
+            input = np.zeros(len(time))
+        else:
+            input = np.zeros((len(time), self._num_inputs))
     else:
         _model_input_checking(input, self._num_inputs, time)
     if initial_condition is None:
