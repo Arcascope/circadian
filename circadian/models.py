@@ -470,6 +470,20 @@ def _check_cbtmin_spacing(
         # raise a warning
         warnings.warn(f"The data contains cbtmin markers that are spaced by less than {min_spacing} hours. Removal of duplicate cbtmin markers is recommended.")
 
+# %% ../nbs/api/00_models.ipynb 30
+def _cbt_single(
+        inverted_x: np.ndarray, # negated signal whose peaks correspond to CBT minima
+        time: np.ndarray, # time array
+        distance: float=None, # min distance between peaks in samples
+        offset: float=0.0, # time offset to add to detected times
+        ) -> np.ndarray:
+    "Detects CBT minimum times from a 1-D signal for a single trajectory"
+    kwargs = dict(distance=distance) if distance is not None else {}
+    idxs, _ = find_peaks(inverted_x, **kwargs)
+    cbtmin_times = time[idxs] + offset
+    _check_cbtmin_spacing(cbtmin_times)
+    return cbtmin_times
+
 # %% ../nbs/api/00_models.ipynb 32
 class Forger99(CircadianModel): 
     "Implementation of Forger's 1999 model from the article 'A simpler model of the human circadian pacemaker'"
@@ -578,19 +592,24 @@ def amplitude(self,
 @patch_to(Forger99)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
-        ) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the minimum of x"
+        ):
+    "Finds the CBT minimum markers along a trajectory. Returns a list of arrays for batch trajectories."
     if trajectory is None:
         trajectory = self.trajectory
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     dt = np.diff(trajectory.time)[0]
-    inverted_x = -1*trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
-    cbtmin_times = trajectory.time[cbt_min_idxs]
-    _check_cbtmin_spacing(cbtmin_times)
-    return cbtmin_times
+    if trajectory.batch_size == 1:
+        inverted_x = -1*trajectory.states[:,0]
+        return _cbt_single(inverted_x, trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), 0.0)
+    return [
+        _cbt_single(
+            -1*trajectory.get_batch(b).states[:,0],
+            trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), 0.0
+        )
+        for b in range(trajectory.batch_size)
+    ]
 
 # %% ../nbs/api/00_models.ipynb 37
 @patch_to(Forger99)
@@ -716,20 +735,25 @@ def amplitude(self,
 # %% ../nbs/api/00_models.ipynb 44
 @patch_to(Hannay19)
 def cbt(self,
-        trajectory: DynamicalTrajectory=None # trajectory to calculate the cbt. If None, the current trajectory is used
-        ) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the times where the phase is pi"
+        trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
+        ):
+    "Finds the CBT minimum markers along a trajectory. Returns a list of arrays for batch trajectories."
     if trajectory is None:
         trajectory = self.trajectory
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     dt = np.diff(trajectory.time)[0]
-    inverted_x = -np.cos(trajectory.states[:,1])
-    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
-    cbtmin_times = trajectory.time[cbt_min_idxs]
-    _check_cbtmin_spacing(cbtmin_times)
-    return cbtmin_times
+    if trajectory.batch_size == 1:
+        inverted_x = -np.cos(trajectory.states[:,1])
+        return _cbt_single(inverted_x, trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), 0.0)
+    return [
+        _cbt_single(
+            -np.cos(trajectory.get_batch(b).states[:,1]),
+            trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), 0.0
+        )
+        for b in range(trajectory.batch_size)
+    ]
 
 # %% ../nbs/api/00_models.ipynb 45
 @patch_to(Hannay19)
@@ -864,19 +888,24 @@ def amplitude(self,
 @patch_to(Hannay19TP)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
-        ) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the times where the phase is pi"
+        ):
+    "Finds the CBT minimum markers along a trajectory. Returns a list of arrays for batch trajectories."
     if trajectory is None:
         trajectory = self.trajectory
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     dt = np.diff(trajectory.time)[0]
-    inverted_x = -np.cos(trajectory.states[:,2])
-    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
-    cbtmin_times = trajectory.time[cbt_min_idxs]
-    _check_cbtmin_spacing(cbtmin_times)
-    return cbtmin_times
+    if trajectory.batch_size == 1:
+        inverted_x = -np.cos(trajectory.states[:,2])
+        return _cbt_single(inverted_x, trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), 0.0)
+    return [
+        _cbt_single(
+            -np.cos(trajectory.get_batch(b).states[:,2]),
+            trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), 0.0
+        )
+        for b in range(trajectory.batch_size)
+    ]
 
 # %% ../nbs/api/00_models.ipynb 53
 @patch_to(Hannay19TP)
@@ -999,19 +1028,24 @@ def amplitude(self,
 @patch_to(Jewett99)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
-        ) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the corrected minimum of x"
+        ):
+    "Finds the CBT minimum markers along a trajectory. Returns a list of arrays for batch trajectories."
     if trajectory is None:
         trajectory = self.trajectory
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     dt = np.diff(trajectory.time)[0]
-    inverted_x = -1*trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
-    cbtmin_times = trajectory.time[cbt_min_idxs] + self.phi_ref
-    _check_cbtmin_spacing(cbtmin_times)
-    return cbtmin_times
+    if trajectory.batch_size == 1:
+        inverted_x = -1*trajectory.states[:,0]
+        return _cbt_single(inverted_x, trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), self.phi_ref)
+    return [
+        _cbt_single(
+            -1*trajectory.get_batch(b).states[:,0],
+            trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), self.phi_ref
+        )
+        for b in range(trajectory.batch_size)
+    ]
 
 # %% ../nbs/api/00_models.ipynb 61
 @patch_to(Jewett99)
@@ -1150,19 +1184,24 @@ def amplitude(self,
 @patch_to(Hilaire07)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
-        ) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the corrected minimum of x"
+        ):
+    "Finds the CBT minimum markers along a trajectory. Returns a list of arrays for batch trajectories."
     if trajectory is None:
         trajectory = self.trajectory
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     dt = np.diff(trajectory.time)[0]
-    inverted_x = -1*trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
-    cbtmin_times = trajectory.time[cbt_min_idxs] + self.phi_ref
-    _check_cbtmin_spacing(cbtmin_times)
-    return cbtmin_times
+    if trajectory.batch_size == 1:
+        inverted_x = -1*trajectory.states[:,0]
+        return _cbt_single(inverted_x, trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), self.phi_ref)
+    return [
+        _cbt_single(
+            -1*trajectory.get_batch(b).states[:,0],
+            trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), self.phi_ref
+        )
+        for b in range(trajectory.batch_size)
+    ]
 
 # %% ../nbs/api/00_models.ipynb 69
 @patch_to(Hilaire07)
@@ -1323,18 +1362,23 @@ def amplitude(self,
 @patch_to(Breslow13)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
-        ) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the corrected minimum of x"
+        ):
+    "Finds the CBT minimum markers along a trajectory. Returns a list of arrays for batch trajectories."
     if trajectory is None:
         trajectory = self.trajectory
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
-    inverted_x = -1 * trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x)
-    cbtmin_times = trajectory.time[cbt_min_idxs] + self.phi_ref
-    _check_cbtmin_spacing(cbtmin_times)
-    return cbtmin_times
+    if trajectory.batch_size == 1:
+        inverted_x = -1*trajectory.states[:,0]
+        return _cbt_single(inverted_x, trajectory.time, None, self.phi_ref)
+    return [
+        _cbt_single(
+            -1*trajectory.get_batch(b).states[:,0],
+            trajectory.time, None, self.phi_ref
+        )
+        for b in range(trajectory.batch_size)
+    ]
 
 # %% ../nbs/api/00_models.ipynb 77
 @patch_to(Breslow13)
@@ -1552,19 +1596,24 @@ def amplitude(self,
 @patch_to(Skeldon23)
 def cbt(self,
         trajectory: DynamicalTrajectory=None, # trajectory to calculate the cbt. If None, the current trajectory is used
-        ) -> np.ndarray:
-    "Finds the core body temperature minumum markers for the model along a trajectory as the minimum of x"
+        ):
+    "Finds the CBT minimum markers along a trajectory. Returns a list of arrays for batch trajectories."
     if trajectory is None:
         trajectory = self.trajectory
     else:
         if not isinstance(trajectory, DynamicalTrajectory):
             raise ValueError("trajectory must be a DynamicalTrajectory")
     dt = np.diff(trajectory.time)[0]
-    inverted_x = -1 * trajectory.states[:,0]
-    cbt_min_idxs, _ = find_peaks(inverted_x, distance=np.ceil(self._min_marker_distance_in_hours / dt)) # min separation between troughs
-    cbtmin_times = trajectory.time[cbt_min_idxs]
-    _check_cbtmin_spacing(cbtmin_times)
-    return cbtmin_times
+    if trajectory.batch_size == 1:
+        inverted_x = -1*trajectory.states[:,0]
+        return _cbt_single(inverted_x, trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), 0.0)
+    return [
+        _cbt_single(
+            -1*trajectory.get_batch(b).states[:,0],
+            trajectory.time, np.ceil(self._min_marker_distance_in_hours / dt), 0.0
+        )
+        for b in range(trajectory.batch_size)
+    ]
 
 # %% ../nbs/api/00_models.ipynb 85
 @patch_to(Skeldon23)
