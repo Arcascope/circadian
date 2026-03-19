@@ -1578,3 +1578,36 @@ def dlmos(self,
             if not isinstance(trajectory, DynamicalTrajectory):
                 raise ValueError("trajectory must be a DynamicalTrajectory")
         return self.cbt(trajectory) - self.cbt_to_dlmo
+
+# %% ../nbs/api/00_models.ipynb 86
+@patch_to(Skeldon23)
+def circadian_modulation(self,
+                         trajectory: DynamicalTrajectory=None, # trajectory to use. If None, the current trajectory is used
+                         ) -> np.ndarray: # circadian modulation of sleep pressure C(t)
+    "Computes the circadian modulation of sleep pressure C(t) along a trajectory"
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    x = trajectory.states[:, 0]
+    xc = trajectory.states[:, 1]
+    linear_term = self.c20 + self.alpha21 * xc + self.alpha22 * x
+    quadratic_term = self.beta21 * xc * xc + self.beta22 * xc * x + self.beta23 * x * x
+    return linear_term + quadratic_term
+
+# %% ../nbs/api/00_models.ipynb 87
+@patch_to(Skeldon23)
+def sleep_thresholds(self,
+                     trajectory: DynamicalTrajectory=None, # trajectory to use. If None, the current trajectory is used
+                     ) -> tuple: # (H_plus, H_minus) wake and sleep threshold arrays
+    "Computes the circadian-modulated wake threshold H_plus and sleep threshold H_minus along a trajectory"
+    if trajectory is None:
+        trajectory = self.trajectory
+    else:
+        if not isinstance(trajectory, DynamicalTrajectory):
+            raise ValueError("trajectory must be a DynamicalTrajectory")
+    C = self.circadian_modulation(trajectory)
+    H_plus = self.H0 + 0.5 * self.Delta + self.ca * C
+    H_minus = self.H0 - 0.5 * self.Delta + self.ca * C
+    return H_plus, H_minus
