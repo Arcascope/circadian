@@ -85,15 +85,9 @@ def __call__(self, timepoint: float) -> np.ndarray: # state of the system
 
 # %% ../nbs/api/00_models.ipynb 11
 @patch_to(DynamicalTrajectory)
-def __getitem__(self, time_idx: int) -> Tuple[float, np.ndarray]:
-    "Return the time and state at index idx"
-    # idx input checking
-    if not isinstance(time_idx, int):
-        raise TypeError("idx must be int")
-    if time_idx < -1 or time_idx >= len(self.time):
-        raise ValueError(f"idx must be within 0 and {len(self.time)-1}, got {time_idx}")
-    
-    return self.time[time_idx], self.states[time_idx, ...]
+def __getitem__(self, idx):
+    "Index directly into the states array (time_idx, state_idx, batch_idx)"
+    return self.states[idx]
 
 # %% ../nbs/api/00_models.ipynb 12
 @patch_to(DynamicalTrajectory)
