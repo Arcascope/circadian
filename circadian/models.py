@@ -1078,16 +1078,16 @@ def derv(self,
      Bhat = self.G * (1 - n) * alpha * (1 - 0.4 * x) * (1 - 0.4 * xc) 
      # From article: sigma equals either 1 (for sleep/rest) or 0 (for wake/activity),
      sigma = 1.0 if wake < 0.5 else 0.0
-     # Calculate psi_cx
-     C = t % 24
-     CBTmin = self.phi_xcx + self.phi_ref
-     CBTminlocal = CBTmin * 24.0 / (2*np.pi)
-     psi_cx = C - CBTminlocal
-     psi_cx = psi_cx % 24
-     # Define Ns
-     Nsh = self.rho * (1.0/3.0 - sigma)
-     if (psi_cx > 16.5 and psi_cx < 21.0):
-          Nsh = self.rho * (1.0/3.0)
+     # Calculate psi_cx: hours since the pacemaker's own CBTmin (Eq. 13). The CBTmin time is
+     # the time at which the polar angle arctan2(xc, x) passes phi_xcx, plus phi_ref hours
+     # (Eqs. 7-8). The angle decreases with time at 2*pi per 24 h, so the hours since it last
+     # passed phi_xcx are (phi_xcx - angle) mod 2*pi converted to hours.
+     angle = np.arctan2(xc, x)
+     hours_since_phi_xcx = np.mod(self.phi_xcx - angle, 2.0 * np.pi) * 12.0 / np.pi
+     psi_cx = np.mod(hours_since_phi_xcx - self.phi_ref, 24.0)
+     # Define Ns: held at the wake drive inside the window (Eqs. 14-15)
+     in_window = (psi_cx > 16.5) & (psi_cx < 21.0)
+     Nsh = np.where(in_window, self.rho * (1.0/3.0), self.rho * (1.0/3.0 - sigma))
      Ns = Nsh * (1 - np.tanh(10.0 * x))
 
      mu_term = self.mu * (1.0 / 3.0 * x + 4.0 / 3.0 * np.power(x, 3.0) - 256.0 / 105.0 * np.power(x, 7.0))
